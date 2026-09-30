@@ -1,4 +1,4 @@
-# Jom Barter
+# JomBarter
 
 A community marketplace where users exchange items or services without necessarily using money.
 
@@ -16,6 +16,7 @@ jom-barter/
 ## Technology Stack
 
 ### Frontend
+
 - **Framework**: Vue 3 + Vite
 - **UI**: Tailwind CSS + Flowbite/Flowbite-Vue
 - **State Management**: Pinia
@@ -23,6 +24,7 @@ jom-barter/
 - **HTTP Client**: Axios
 
 ### Backend
+
 - **Framework**: NestJS + TypeScript
 - **Authentication**: JWT + bcrypt/argon2
 - **Validation**: class-validator + class-transformer
@@ -31,17 +33,20 @@ jom-barter/
 - **Testing**: Jest + Supertest
 
 ### Database
+
 - **Database**: Microsoft SQL Server
 - **ORM**: Prisma (preferred) or TypeORM
 
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18+ and npm
 - Microsoft SQL Server
 - Git
 
 ### Frontend Development
+
 ```bash
 cd frontend
 npm install
@@ -49,6 +54,7 @@ npm run dev
 ```
 
 ### Backend Development
+
 ```bash
 cd backend
 npm install
@@ -56,9 +62,11 @@ npm run start:dev
 ```
 
 ## Core Product Flow
+
 Register → Create Listing → Discover Listing → Offer Trade → Chat/Negotiate → Accept Trade → Complete Exchange → Review
 
 ## MVP Development Phases
+
 1. ✅ **Project Setup** - Repository structure, environment configuration
 2. **Authentication** - Registration, login, JWT authentication
 3. **User Profile** - Profile management, avatars, basic statistics
@@ -74,4 +82,5 @@ Register → Create Listing → Discover Listing → Offer Trade → Chat/Negoti
 13. **Admin Dashboard** - Administrative interface
 
 ## License
+
 Private project for development purposes.

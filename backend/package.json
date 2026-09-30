@@ -1,8 +1,8 @@
 {
   "name": "jom-barter-backend",
   "version": "0.1.0",
-  "description": "Jom Barter Backend API",
-  "author": "Jom Barter Team",
+  "description": "JomBarter Backend API",
+  "author": "JomBarter Team",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

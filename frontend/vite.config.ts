@@ -7,11 +7,20 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-    }
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
   },
   server: {
     port: 3000,
-    host: true
-  }
+    host: true,
+    proxy: {
+      // Proxy /api requests to the NestJS backend during development.
+      // This means the browser never makes a cross-origin request — Vite
+      // forwards it server-side, so no CORS preflight is needed in dev.
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
+  },
 })

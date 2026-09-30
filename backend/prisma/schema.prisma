@@ -1,0 +1,312 @@
+// ============================================================
+// JomBarter — Prisma Schema
+// Database: SQLite (dev) — swap provider to "sqlserver" for production
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS  (SQLite has no native enum; stored as String)
+// ============================================================
+
+// User.role
+// USER | ADMIN  — MODERATOR reserved for future use
+
+// User.status
+// ACTIVE | SUSPENDED | BANNED
+
+// Listing.status
+// DRAFT | ACTIVE | TRADED | ARCHIVED | REMOVED
+
+// Listing.condition
+// NEW | LIKE_NEW | GOOD | FAIR | POOR
+
+// TradeOffer.status
+// PENDING | ACCEPTED | REJECTED | CANCELLED | EXPIRED
+
+// Trade.status
+// ACTIVE | COMPLETED | CANCELLED
+
+// Message.messageType
+// TEXT | IMAGE | SYSTEM
+
+// Report.targetType
+// LISTING | USER
+
+// Report.status
+// OPEN | REVIEWED | RESOLVED | DISMISSED
+
+// Notification.type
+// TRADE_OFFER | TRADE_ACCEPTED | TRADE_REJECTED | TRADE_CANCELLED
+// TRADE_COMPLETED | MESSAGE | REVIEW | REPORT | SYSTEM
+
+// ============================================================
+// MODELS
+// ============================================================
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  username     String  @unique
+  passwordHash String
+  displayName  String
+  profileImage String?
+  bio          String?
+  location     String?
+  role         String  @default("USER")   // USER | ADMIN
+  status       String  @default("ACTIVE") // ACTIVE | SUSPENDED | BANNED
+
+  // Relations
+  listings                Listing[]
+  favorites               Favorite[]
+  sentTradeOffers         TradeOffer[]             @relation("SentOffers")
+  receivedTradeOffers     TradeOffer[]             @relation("ReceivedOffers")
+  conversationParticipants ConversationParticipant[]
+  sentMessages            Message[]
+  reviewsGiven            Review[]                 @relation("ReviewsGiven")
+  reviewsReceived         Review[]                 @relation("ReviewsReceived")
+  reports                 Report[]                 @relation("ReportsFiled")
+  reportedBy              Report[]                 @relation("ReportsAgainstUser")
+  notifications           Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([username])
+  @@index([status])
+}
+
+model Category {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String?
+  isActive    Boolean @default(true)
+
+  listings Listing[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Listing {
+  id             String  @id @default(cuid())
+  userId         String
+  categoryId     String
+  title          String
+  description    String
+  condition      String  // NEW | LIKE_NEW | GOOD | FAIR | POOR
+  estimatedValue Float?
+  location       String?
+  status         String  @default("DRAFT") // DRAFT | ACTIVE | TRADED | ARCHIVED | REMOVED
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  images           ListingImage[]
+  favorites        Favorite[]
+  offeredItems     TradeOfferItem[] @relation("OfferedListings")
+  targetOffers     TradeOffer[]     @relation("TargetListing")
+  reports          Report[]         @relation("ReportsAgainstListing")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([condition])
+  @@index([createdAt])
+  @@index([estimatedValue])
+}
+
+model ListingImage {
+  id        String @id @default(cuid())
+  listingId String
+  imageUrl  String
+  sortOrder Int    @default(0)
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
+}
+
+model TradeOffer {
+  id              String   @id @default(cuid())
+  senderId        String
+  receiverId      String
+  targetListingId String
+  message         String?
+  status          String   @default("PENDING") // PENDING | ACCEPTED | REJECTED | CANCELLED | EXPIRED
+  expiresAt       DateTime?
+  respondedAt     DateTime?
+
+  // Relations
+  sender         User     @relation("SentOffers", fields: [senderId], references: [id])
+  receiver       User     @relation("ReceivedOffers", fields: [receiverId], references: [id])
+  targetListing  Listing  @relation("TargetListing", fields: [targetListingId], references: [id])
+
+  offeredItems   TradeOfferItem[]
+  trade          Trade?
+
+  createdAt DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
+  @@index([targetListingId])
+}
+
+model TradeOfferItem {
+  id           String @id @default(cuid())
+  tradeOfferId String
+  listingId    String
+
+  tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id], onDelete: Cascade)
+  listing    Listing    @relation("OfferedListings", fields: [listingId], references: [id])
+
+  @@unique([tradeOfferId, listingId])
+  @@index([tradeOfferId])
+}
+
+model Conversation {
+  id String @id @default(cuid())
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConversationParticipant {
+  id             String @id @default(cuid())
+  conversationId String
+  userId         String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([conversationId])
+  @@index([userId])
+}
+
+model Message {
+  id             String  @id @default(cuid())
+  conversationId String
+  senderId       String
+  message        String
+  messageType    String  @default("TEXT") // TEXT | IMAGE | SYSTEM
+  isRead         Boolean @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([isRead])
+}
+
+model Trade {
+  id           String    @id @default(cuid())
+  tradeOfferId String    @unique
+  status       String    @default("ACTIVE") // ACTIVE | COMPLETED | CANCELLED
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+
+  tradeOffer TradeOffer @relation(fields: [tradeOfferId], references: [id])
+  reviews    Review[]
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+}
+
+model Review {
+  id             String @id @default(cuid())
+  tradeId        String
+  reviewerId     String
+  reviewedUserId String
+  rating         Int    // 1–5
+  comment        String?
+
+  trade        Trade @relation(fields: [tradeId], references: [id])
+  reviewer     User  @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  reviewedUser User  @relation("ReviewsReceived", fields: [reviewedUserId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([tradeId, reviewerId])   // one review per reviewer per trade
+  @@index([reviewedUserId])
+  @@index([tradeId])
+}
+
+model Favorite {
+  id        String @id @default(cuid())
+  userId    String
+  listingId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+  @@index([userId])
+}
+
+model Report {
+  id               String    @id @default(cuid())
+  reporterId       String
+  targetType       String    // LISTING | USER
+  // Exactly one of the two target fields will be set depending on targetType
+  targetUserId     String?
+  targetListingId  String?
+  reason           String
+  description      String?
+  status           String    @default("OPEN") // OPEN | REVIEWED | RESOLVED | DISMISSED
+  reviewedBy       String?
+  resolvedAt       DateTime?
+
+  reporter        User     @relation("ReportsFiled", fields: [reporterId], references: [id])
+  reportedUser    User?    @relation("ReportsAgainstUser", fields: [targetUserId], references: [id])
+  reportedListing Listing? @relation("ReportsAgainstListing", fields: [targetListingId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([reporterId])
+  @@index([targetType])
+  @@index([status])
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  type    String  // TRADE_OFFER | MESSAGE | REVIEW | SYSTEM | etc.
+  title   String
+  message String
+  data    String? // JSON blob for extra payload
+  isRead  Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
