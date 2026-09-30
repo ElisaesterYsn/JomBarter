@@ -189,8 +189,18 @@ const listingService = {
   /** Resolve a stored filename to a full URL for display */
   mediaUrl(filename: string | null | undefined): string | null {
     if (!filename) return null
+    // Already an absolute URL (future S3 migration)
     if (filename.startsWith('http')) return filename
+
     const base = (import.meta.env.VITE_API_BASE_URL as string) || '/api'
+
+    if (base.startsWith('/')) {
+      // Relative base (dev with Vite proxy): /api → /uploads/<filename>
+      // The proxy in vite.config.ts forwards /uploads/* to the backend.
+      return `/uploads/${filename}`
+    }
+
+    // Absolute base (production): strip /api suffix to get server root
     const serverRoot = base.replace(/\/api\/?$/, '')
     return `${serverRoot}/uploads/${filename}`
   },

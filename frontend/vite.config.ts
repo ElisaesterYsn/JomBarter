@@ -21,6 +21,12 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      // Proxy /uploads so uploaded images served by NestJS ServeStaticModule
+      // are reachable from the Vite dev server at localhost:3000/uploads/...
+      '/uploads': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })
