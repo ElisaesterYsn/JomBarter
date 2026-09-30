@@ -4,7 +4,9 @@ import HomeView from '@/pages/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior: () => ({ top: 0 }),
   routes: [
+    // ── Public ──────────────────────────────────────────────────────────────
     {
       path: '/',
       name: 'home',
@@ -15,6 +17,8 @@ const router = createRouter({
       name: 'about',
       component: () => import('@/pages/AboutView.vue'),
     },
+
+    // ── Guest-only (redirect authenticated users away) ────────────────────
     {
       path: '/register',
       name: 'register',
@@ -27,14 +31,47 @@ const router = createRouter({
       component: () => import('@/pages/LoginView.vue'),
       meta: { guestOnly: true },
     },
+
+    // ── Authenticated user routes ─────────────────────────────────────────
+    {
+      path: '/listings/:id',
+      name: 'listing-detail',
+      component: () => import('@/pages/ListingDetailView.vue'),
+      // public — anyone can view a listing detail
+    },
+    {
+      path: '/my-listings',
+      name: 'my-listings',
+      component: () => import('@/pages/MyListingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/my-listings/create',
+      name: 'create-listing',
+      component: () => import('@/pages/CreateListingView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/my-listings/:id/edit',
+      name: 'edit-listing',
+      component: () => import('@/pages/EditListingView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
-// Navigation guard — redirect authenticated users away from guest-only pages
+// ── Navigation guards ────────────────────────────────────────────────────────
 router.beforeEach((to) => {
   const auth = useAuthStore()
+
+  // Redirect logged-in users away from guest-only pages
   if (to.meta.guestOnly && auth.isAuthenticated) {
     return { name: 'home' }
+  }
+
+  // Redirect unauthenticated users to login for protected pages
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 })
 

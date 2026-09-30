@@ -108,6 +108,7 @@ model Listing {
   condition      String  // NEW | LIKE_NEW | GOOD | FAIR | POOR
   estimatedValue Float?
   location       String?
+  lookingFor     String?  // What the owner wants in exchange (free-text barter description)
   status         String  @default("DRAFT") // DRAFT | ACTIVE | TRADED | ARCHIVED | REMOVED
 
   // Relations
@@ -131,10 +132,11 @@ model Listing {
 }
 
 model ListingImage {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   listingId String
-  imageUrl  String
-  sortOrder Int    @default(0)
+  imageUrl  String?  // null when entry is video-only
+  videoUrl  String?  // null when entry is image-only
+  sortOrder Int     @default(0)
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
