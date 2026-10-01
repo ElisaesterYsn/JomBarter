@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-2xl mx-auto">
+  <div class="max-w-4xl mx-auto">
     <!-- Back -->
     <button
       class="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-primary-700 transition mb-5"
@@ -11,42 +11,219 @@
       Back to listings
     </button>
 
-    <!-- Loading -->
-    <div v-if="loading" class="card animate-pulse space-y-4">
-      <div class="aspect-[4/3] bg-surface-200 rounded-xl"></div>
-      <div class="h-6 bg-surface-200 rounded w-2/3"></div>
-      <div class="h-4 bg-surface-200 rounded w-full"></div>
+    <!-- ── Loading skeleton ── -->
+    <div v-if="loading" class="grid lg:grid-cols-[1fr_380px] gap-6">
+      <div class="card animate-pulse space-y-3">
+        <div class="aspect-[4/3] bg-surface-200 rounded-xl"></div>
+        <div class="flex gap-2">
+          <div v-for="n in 4" :key="n" class="w-16 h-16 bg-surface-200 rounded-lg shrink-0"></div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="card animate-pulse space-y-4">
+          <div class="h-5 bg-surface-200 rounded w-1/3"></div>
+          <div class="h-7 bg-surface-200 rounded w-5/6"></div>
+          <div class="h-4 bg-surface-200 rounded w-2/3"></div>
+        </div>
+        <div class="card animate-pulse space-y-3">
+          <div class="h-3 bg-surface-200 rounded w-full"></div>
+          <div class="h-3 bg-surface-200 rounded w-full"></div>
+          <div class="h-3 bg-surface-200 rounded w-4/6"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- Error -->
+    <!-- ── Error ── -->
     <div v-else-if="error" class="card text-center py-12">
       <p class="text-surface-600 mb-4">{{ error }}</p>
       <button class="btn-secondary px-5 py-2 text-sm" @click="load">Try again</button>
     </div>
 
+    <!-- ── Main content ── -->
     <template v-else-if="listing">
-      <!-- ── Media carousel ── -->
-      <div class="card !p-0 overflow-hidden mb-5">
-        <div class="relative bg-surface-100" style="aspect-ratio: 4/3">
-          <template v-if="currentMedia?.imageUrl">
-            <img
-              :src="mediaUrl(currentMedia.imageUrl)"
-              :alt="listing.title"
-              class="w-full h-full object-contain"
-            />
-          </template>
-          <template v-else-if="currentMedia?.videoUrl">
-            <video
-              :src="mediaUrl(currentMedia.videoUrl)"
-              class="w-full h-full object-contain"
-              controls
-              preload="metadata"
-            />
-          </template>
-          <template v-else>
-            <div class="w-full h-full flex flex-col items-center justify-center text-surface-300">
+      <!-- Two-column on desktop, single column on mobile -->
+      <div class="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
+        <!-- ══ LEFT COLUMN: Gallery ══════════════════════════════════════════ -->
+        <div class="space-y-3">
+          <!-- Main image / placeholder -->
+          <div
+            class="rounded-2xl overflow-hidden bg-surface-100 border border-surface-200"
+            style="aspect-ratio: 4/3"
+          >
+            <template v-if="currentMedia?.imageUrl">
+              <img
+                :src="mediaUrl(currentMedia.imageUrl)"
+                :alt="listing.title"
+                class="w-full h-full object-cover cursor-zoom-in"
+                @click="lightboxOpen = true"
+              />
+            </template>
+            <template v-else>
+              <!-- No photo placeholder -->
+              <div
+                class="w-full h-full flex flex-col items-center justify-center text-surface-300 gap-2"
+              >
+                <svg
+                  class="w-16 h-16"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span class="text-sm font-medium">No photos added yet</span>
+              </div>
+            </template>
+          </div>
+
+          <!-- Thumbnail strip (only when >1 image) -->
+          <div
+            v-if="listing.images.length > 1"
+            class="flex gap-2 overflow-x-auto pb-1"
+            role="list"
+            :aria-label="`${listing.images.length} photos`"
+          >
+            <button
+              v-for="(img, i) in listing.images"
+              :key="img.id"
+              role="listitem"
+              class="shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition focus:outline-none focus:ring-2 focus:ring-primary-500"
+              :class="
+                i === mediaIndex
+                  ? 'border-primary-500 ring-1 ring-primary-400'
+                  : 'border-surface-200 opacity-60 hover:opacity-100 hover:border-surface-400'
+              "
+              :aria-label="`View photo ${i + 1}`"
+              :aria-pressed="i === mediaIndex"
+              @click="mediaIndex = i"
+            >
+              <img
+                v-if="img.imageUrl"
+                :src="mediaUrl(img.imageUrl)"
+                :alt="`Photo ${i + 1}`"
+                class="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <div
+                v-else
+                class="w-full h-full bg-surface-200 flex items-center justify-center text-surface-400"
+              >
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path
+                    fill-rule="evenodd"
+                    d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </div>
+            </button>
+          </div>
+
+          <!-- Photo count hint -->
+          <p v-if="listing.images.length > 1" class="text-xs text-surface-400 text-center">
+            Photo {{ mediaIndex + 1 }} of {{ listing.images.length }}
+            <span
+              class="ml-1 text-primary-600 cursor-pointer hover:underline"
+              @click="lightboxOpen = true"
+              >· View larger</span
+            >
+          </p>
+        </div>
+
+        <!-- ══ RIGHT COLUMN: All listing info ════════════════════════════════ -->
+        <div class="space-y-4">
+          <!-- ── Header card: title, condition, location, date ── -->
+          <div class="card">
+            <!-- Condition + status row -->
+            <div class="flex items-center gap-2 mb-3 flex-wrap">
+              <span
+                class="text-xs font-bold px-2.5 py-1 rounded-full"
+                :class="conditionClass(listing.condition)"
+              >
+                {{ conditionLabel(listing.condition) }}
+              </span>
+              <span
+                v-if="listing.status !== 'ACTIVE'"
+                class="text-xs font-semibold px-2.5 py-1 rounded-full"
+                :class="
+                  listing.status === 'TRADED'
+                    ? 'bg-primary-100 text-primary-800'
+                    : 'bg-surface-200 text-surface-600'
+                "
+              >
+                {{
+                  listing.status === 'TRADED'
+                    ? 'Traded'
+                    : listing.status === 'ARCHIVED'
+                      ? 'Archived'
+                      : listing.status
+                }}
+              </span>
+              <span
+                v-if="listing.category"
+                class="text-xs bg-surface-100 text-surface-600 px-2.5 py-1 rounded-full font-medium"
+              >
+                {{ listing.category.name }}
+              </span>
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-2xl font-bold text-surface-900 leading-tight mb-3">
+              {{ listing.title }}
+            </h1>
+
+            <!-- Location + date -->
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-surface-500">
+              <span v-if="listing.location" class="flex items-center gap-1">
+                <svg
+                  class="w-4 h-4 shrink-0 text-surface-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                </svg>
+                {{ listing.location }}
+              </span>
+              <span class="flex items-center gap-1">
+                <svg
+                  class="w-4 h-4 shrink-0 text-surface-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                {{ fullDate(listing.createdAt) }}
+              </span>
+              <span class="text-surface-400">{{ relativeTime(listing.createdAt) }}</span>
+            </div>
+
+            <!-- Estimated value -->
+            <div
+              v-if="listing.estimatedValue"
+              class="mt-3 inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold px-3 py-1.5 rounded-xl"
+            >
               <svg
-                class="w-14 h-14 mb-2"
+                class="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -55,280 +232,257 @@
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              <span class="text-sm">No photos</span>
-            </div>
-          </template>
-
-          <!-- Carousel arrows -->
-          <template v-if="listing.images.length > 1">
-            <button
-              class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition"
-              :disabled="mediaIndex === 0"
-              aria-label="Previous photo"
-              @click="mediaIndex--"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
                   stroke-width="2"
-                  d="M15 19l-7-7 7-7"
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-            </button>
-            <button
-              class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center transition"
-              :disabled="mediaIndex === listing.images.length - 1"
-              aria-label="Next photo"
-              @click="mediaIndex++"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-            <div class="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-              <button
-                v-for="(_, i) in listing.images"
-                :key="i"
-                class="w-2 h-2 rounded-full transition"
-                :class="i === mediaIndex ? 'bg-white' : 'bg-white/50'"
-                :aria-label="`Photo ${i + 1}`"
-                @click="mediaIndex = i"
-              />
+              Estimated value: RM {{ listing.estimatedValue.toLocaleString() }}
             </div>
-          </template>
-        </div>
+          </div>
 
-        <!-- Thumbnail strip -->
-        <div
-          v-if="listing.images.length > 1"
-          class="flex gap-2 p-3 overflow-x-auto bg-surface-50 border-t border-surface-100"
-        >
-          <button
-            v-for="(img, i) in listing.images"
-            :key="img.id"
-            class="shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition"
-            :class="
-              i === mediaIndex
-                ? 'border-primary-500'
-                : 'border-transparent opacity-60 hover:opacity-100'
-            "
-            :aria-label="`View photo ${i + 1}`"
-            @click="mediaIndex = i"
-          >
-            <img
-              v-if="img.imageUrl"
-              :src="mediaUrl(img.imageUrl)"
-              :alt="`Photo ${i + 1}`"
-              class="w-full h-full object-cover"
-            />
-            <div
-              v-else
-              class="w-full h-full bg-surface-200 flex items-center justify-center text-surface-400"
+          <!-- ── Description ── -->
+          <div class="card">
+            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+              Description
+            </h2>
+            <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
+              {{ listing.description }}
+            </p>
+          </div>
+
+          <!-- ── What they want (most important barter field) ── -->
+          <div v-if="listing.lookingFor" class="card bg-primary-50 border-primary-100">
+            <h2
+              class="text-xs font-bold text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-1.5"
             >
-              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path
                   fill-rule="evenodd"
-                  d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                   clip-rule="evenodd"
                 />
               </svg>
+              Looking to trade for
+            </h2>
+            <p class="text-sm text-primary-900 leading-relaxed font-medium">
+              {{ listing.lookingFor }}
+            </p>
+          </div>
+
+          <!-- ── Trade preferences + Exchange methods ── -->
+          <div v-if="tradePreferences.length || exchangeMethods.length" class="card space-y-4">
+            <div v-if="tradePreferences.length">
+              <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
+                Trade preferences
+              </h2>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="p in tradePreferences"
+                  :key="p"
+                  class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+                >
+                  <svg
+                    class="w-3 h-3 text-primary-600"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                  {{ tradePrefLabel(p) }}
+                </span>
+              </div>
             </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- ── Main info ── -->
-      <div class="card mb-4">
-        <!-- Title row -->
-        <div class="flex items-start justify-between gap-3 mb-3">
-          <h1 class="text-xl font-bold text-surface-800 leading-snug flex-1">
-            {{ listing.title }}
-          </h1>
-          <span
-            class="text-xs font-semibold px-2.5 py-1 rounded-full shrink-0"
-            :class="conditionClass(listing.condition)"
-          >
-            {{ conditionLabel(listing.condition) }}
-          </span>
-        </div>
-
-        <!-- Meta chips row -->
-        <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
-          <span
-            v-if="listing.category"
-            class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 px-2.5 py-1 rounded-full font-medium"
-          >
-            📂 {{ listing.category.name }}
-          </span>
-          <span v-if="listing.location" class="inline-flex items-center gap-1 text-surface-500">
-            <svg
-              class="w-3.5 h-3.5 shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            {{ listing.location }}
-          </span>
-          <span
-            v-if="listing.estimatedValue"
-            class="inline-flex items-center gap-1 bg-amber-50 text-amber-800 px-2.5 py-1 rounded-full font-medium border border-amber-200"
-          >
-            Estimated: RM {{ listing.estimatedValue.toLocaleString() }}
-          </span>
-          <span class="text-surface-400 ml-auto">{{ relativeTime(listing.createdAt) }}</span>
-        </div>
-
-        <!-- Description -->
-        <div class="mb-4">
-          <h2 class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">
-            Description
-          </h2>
-          <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
-            {{ listing.description }}
-          </p>
-        </div>
-
-        <!-- What they want -->
-        <div
-          v-if="listing.lookingFor"
-          class="mb-4 bg-primary-50 border border-primary-100 rounded-xl p-4"
-        >
-          <h2 class="text-xs font-semibold text-primary-700 uppercase tracking-wide mb-2">
-            Looking to trade for
-          </h2>
-          <p class="text-sm text-primary-900 leading-relaxed">{{ listing.lookingFor }}</p>
-        </div>
-
-        <!-- Trade preferences -->
-        <div v-if="tradePreferences.length" class="mb-4">
-          <h2 class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">
-            Trade preferences
-          </h2>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="p in tradePreferences"
-              :key="p"
-              class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 text-xs px-2.5 py-1 rounded-full"
-            >
-              ✓ {{ tradePrefLabel(p) }}
-            </span>
+            <div v-if="exchangeMethods.length">
+              <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
+                Exchange method
+              </h2>
+              <div class="flex flex-wrap gap-2">
+                <span
+                  v-for="m in exchangeMethods"
+                  :key="m"
+                  class="inline-flex items-center gap-1.5 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+                >
+                  {{ exchangeMethodEmoji(m) }} {{ exchangeMethodLabel(m) }}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- Exchange methods -->
-        <div v-if="exchangeMethods.length" class="mb-4">
-          <h2 class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">
-            Exchange method
-          </h2>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="m in exchangeMethods"
-              :key="m"
-              class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 text-xs px-2.5 py-1 rounded-full"
-            >
-              {{ exchangeMethodEmoji(m) }} {{ exchangeMethodLabel(m) }}
-            </span>
+          <!-- ── Interested categories ── -->
+          <div v-if="resolvedInterestedCats.length" class="card">
+            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
+              Interested in
+            </h2>
+            <div class="flex flex-wrap gap-2">
+              <span
+                v-for="cat in resolvedInterestedCats"
+                :key="cat"
+                class="inline-flex items-center bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+              >
+                📂 {{ cat }}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <!-- Interested-in categories -->
-        <div v-if="interestedInCats.length" class="mb-4">
-          <h2 class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">
-            Interested in
-          </h2>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="cat in interestedInCats"
-              :key="cat"
-              class="inline-flex items-center bg-surface-100 text-surface-700 text-xs px-2.5 py-1 rounded-full"
+          <!-- ── Owner card + CTA ── -->
+          <div class="card">
+            <!-- Owner row -->
+            <div class="flex items-center gap-3 mb-4 pb-4 border-b border-surface-100">
+              <div
+                class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold uppercase shrink-0"
+                aria-hidden="true"
+              >
+                {{ listing.user?.displayName?.charAt(0) ?? '?' }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-surface-800 truncate">
+                  {{ listing.user?.displayName }}
+                </p>
+                <p class="text-xs text-surface-400">Listed {{ relativeTime(listing.createdAt) }}</p>
+              </div>
+            </div>
+
+            <!-- CTA -->
+            <!-- Guest -->
+            <router-link
+              v-if="!authStore.isAuthenticated"
+              to="/register"
+              class="btn-primary w-full py-3 text-sm text-center"
             >
-              {{ cat }}
-            </span>
-          </div>
-        </div>
-      </div>
+              Sign up to make an offer
+            </router-link>
 
-      <!-- ── Owner + CTA ── -->
-      <div class="card flex items-center gap-4">
-        <div
-          class="w-11 h-11 rounded-full bg-primary-600 text-white flex items-center justify-center text-base font-bold uppercase shrink-0"
-          aria-hidden="true"
-        >
-          {{ listing.user?.displayName?.charAt(0) ?? '?' }}
-        </div>
-        <div class="flex-1 min-w-0">
-          <p class="text-sm font-semibold text-surface-800 truncate">
-            {{ listing.user?.displayName }}
-          </p>
-          <p class="text-xs text-surface-400">Member · {{ relativeTime(listing.createdAt) }}</p>
-        </div>
-
-        <!-- Guest CTA -->
-        <router-link
-          v-if="!authStore.isAuthenticated"
-          to="/register"
-          class="btn-primary text-sm px-5 py-2.5 shrink-0"
-        >
-          Sign up to offer
-        </router-link>
-        <!-- Own listing -->
-        <router-link
-          v-else-if="authStore.user?.id === listing.userId"
-          :to="`/my-listings/${listing.id}/edit`"
-          class="btn-secondary text-sm px-5 py-2.5 shrink-0"
-        >
-          Edit listing
-        </router-link>
-        <!-- Listing is not available for new offers -->
-        <span
-          v-else-if="listing.status !== 'ACTIVE'"
-          class="text-xs text-surface-500 bg-surface-100 border border-surface-200 rounded-lg px-4 py-2.5 shrink-0"
-        >
-          No longer available
-        </span>
-        <!-- Already has a pending offer -->
-        <template v-else-if="existingPendingOffer">
-          <div class="flex flex-col items-end gap-1 shrink-0">
-            <span
-              class="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
+            <!-- Own listing -->
+            <router-link
+              v-else-if="authStore.user?.id === listing.userId"
+              :to="`/my-listings/${listing.id}/edit`"
+              class="btn-secondary w-full py-3 text-sm text-center"
             >
-              Offer Pending
-            </span>
+              Edit your listing
+            </router-link>
+
+            <!-- Not available -->
+            <div
+              v-else-if="listing.status !== 'ACTIVE'"
+              class="text-center py-3 text-sm text-surface-500 bg-surface-100 rounded-xl border border-surface-200"
+            >
+              This listing is no longer available
+            </div>
+
+            <!-- Pending offer exists -->
+            <template v-else-if="existingPendingOffer">
+              <div
+                class="text-center bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2"
+              >
+                <p class="text-sm font-semibold text-amber-800">
+                  You have a pending offer on this listing
+                </p>
+                <button
+                  class="text-xs text-red-600 hover:underline disabled:opacity-50"
+                  :disabled="offerStore.processingId === existingPendingOffer.id"
+                  @click="cancelPendingOffer"
+                >
+                  {{
+                    offerStore.processingId === existingPendingOffer.id
+                      ? 'Cancelling…'
+                      : 'Cancel my offer'
+                  }}
+                </button>
+              </div>
+            </template>
+
+            <!-- Make an Offer -->
             <button
-              class="text-[11px] text-red-600 hover:underline"
-              :disabled="offerStore.processingId === existingPendingOffer.id"
-              @click="cancelPendingOffer"
+              v-else
+              class="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
+              @click="openOfferModal"
             >
-              {{
-                offerStore.processingId === existingPendingOffer.id ? 'Cancelling…' : 'Cancel offer'
-              }}
+              <svg
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
+              Make an Offer
             </button>
           </div>
-        </template>
-        <!-- Make an Offer CTA -->
-        <button v-else class="btn-primary text-sm px-5 py-2.5 shrink-0" @click="openOfferModal">
-          Make an Offer
-        </button>
+        </div>
+        <!-- end right column -->
       </div>
+      <!-- end grid -->
     </template>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         LIGHTBOX
+    ══════════════════════════════════════════════════════════════════ -->
+    <div
+      v-if="lightboxOpen && currentMedia?.imageUrl"
+      class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo viewer"
+      @click.self="lightboxOpen = false"
+    >
+      <button
+        class="absolute top-4 right-4 text-white/70 hover:text-white transition"
+        aria-label="Close photo viewer"
+        @click="lightboxOpen = false"
+      >
+        <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path
+            fill-rule="evenodd"
+            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </button>
+
+      <!-- Prev/Next in lightbox -->
+      <button
+        v-if="listing && mediaIndex > 0"
+        class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition"
+        aria-label="Previous photo"
+        @click.stop="mediaIndex--"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+      </button>
+      <button
+        v-if="listing && mediaIndex < listing.images.length - 1"
+        class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 text-white rounded-full flex items-center justify-center transition"
+        aria-label="Next photo"
+        @click.stop="mediaIndex++"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+
+      <img
+        :src="mediaUrl(currentMedia.imageUrl)"
+        :alt="listing?.title ?? 'Listing photo'"
+        class="max-w-full max-h-[90vh] object-contain rounded-lg select-none"
+      />
+    </div>
 
     <!-- ══════════════════════════════════════════════════════════════════
          MAKE AN OFFER MODAL
@@ -362,7 +516,7 @@
         </div>
 
         <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
-          <!-- They want -->
+          <!-- Target listing summary -->
           <div class="bg-surface-50 rounded-xl p-3 flex items-center gap-3">
             <div class="w-12 h-12 bg-surface-200 rounded-lg overflow-hidden shrink-0">
               <img
@@ -410,8 +564,9 @@
                 to="/my-listings/create"
                 class="btn-primary text-sm px-4 py-2 inline-block"
                 @click="showOfferModal = false"
-                >Create a listing first</router-link
               >
+                Create a listing first
+              </router-link>
             </div>
             <div v-else class="space-y-2 max-h-56 overflow-y-auto pr-1">
               <label
@@ -481,9 +636,9 @@
 
           <!-- Message -->
           <div>
-            <label for="offer-message" class="form-label"
-              >Message <span class="text-surface-400 font-normal text-xs">(optional)</span></label
-            >
+            <label for="offer-message" class="form-label">
+              Message <span class="text-surface-400 font-normal text-xs">(optional)</span>
+            </label>
             <textarea
               id="offer-message"
               v-model="offerMessage"
@@ -525,7 +680,7 @@
 
         <!-- Modal footer -->
         <div class="flex gap-3 px-5 py-4 border-t border-surface-100">
-          <button type="button" class="btn-secondary flex-1 py-2.5" @click="showOfferModal = false">
+          <button type="button" class="btn-secondary flex-1 py-2.5" @click="closeOfferModal">
             Cancel
           </button>
           <button
@@ -565,7 +720,11 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOfferStore } from '@/stores/offer'
 import { useListingStore } from '@/stores/listing'
-import listingService, { type Listing, parseCommaList } from '@/services/listingService'
+import listingService, {
+  type Listing,
+  type Category,
+  parseCommaList,
+} from '@/services/listingService'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -580,6 +739,7 @@ const listing = ref<
 const loading = ref(false)
 const error = ref<string | null>(null)
 const mediaIndex = ref(0)
+const lightboxOpen = ref(false)
 const currentMedia = computed(() => listing.value?.images[mediaIndex.value] ?? null)
 
 async function load() {
@@ -595,19 +755,38 @@ async function load() {
   }
 }
 
+// ── Categories (to resolve interestedInCategories ids → names) ───────────────
+const allCategories = ref<Category[]>([])
+
+async function loadCategories() {
+  try {
+    allCategories.value = await listingService.getCategories()
+  } catch {
+    /* non-fatal */
+  }
+}
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
 onMounted(() => {
   load()
+  loadCategories()
   if (authStore.isAuthenticated) {
     loadMyListings()
-    offerStore.fetchSent() // need sent offers to detect existing pending offer
+    offerStore.fetchSent()
   }
 })
 
 // ── Parsed fields ─────────────────────────────────────────────────────────────
 const tradePreferences = computed(() => parseCommaList(listing.value?.tradePreference))
 const exchangeMethods = computed(() => parseCommaList(listing.value?.exchangeMethod))
-// interestedInCategories: we just show raw ids for now (will map to names when categories store is available)
-const interestedInCats = computed(() => parseCommaList(listing.value?.interestedInCategories))
+
+/** Resolve comma-sep category IDs to human-readable names */
+const resolvedInterestedCats = computed((): string[] => {
+  const ids = parseCommaList(listing.value?.interestedInCategories)
+  if (!ids.length) return []
+  const map = new Map(allCategories.value.map((c) => [c.id, c.name]))
+  return ids.map((id) => map.get(id) ?? id) // fallback to id if not resolved yet
+})
 
 // ── Offer modal ───────────────────────────────────────────────────────────────
 const showOfferModal = ref(false)
@@ -621,7 +800,6 @@ const offerableListing = computed(() =>
   listingStore.myListings.filter((l) => l.status === 'ACTIVE' && l.id !== id),
 )
 
-/** Check if the current user already has a pending offer on this listing */
 const existingPendingOffer = computed(
   () => offerStore.sent.find((o) => o.targetListingId === id && o.status === 'PENDING') ?? null,
 )
@@ -636,7 +814,7 @@ function openOfferModal() {
 }
 
 function closeOfferModal() {
-  if (offerStore.submitting) return // prevent closing while submitting
+  if (offerStore.submitting) return
   showOfferModal.value = false
 }
 
@@ -682,6 +860,7 @@ async function sendOffer() {
 function mediaUrl(filename: string | null | undefined) {
   return listingService.mediaUrl(filename) ?? ''
 }
+
 function firstImage(item: Listing | null | undefined): string | null {
   if (!item) return null
   const m = item.images?.find((i) => i.imageUrl)
@@ -698,18 +877,16 @@ const conditionLabels: Record<string, string> = {
 function conditionLabel(c: string) {
   return conditionLabels[c] ?? c
 }
+
 function conditionClass(c: string) {
-  return (
-    (
-      {
-        NEW: 'bg-green-100 text-green-800',
-        LIKE_NEW: 'bg-emerald-100 text-emerald-800',
-        GOOD: 'bg-primary-100 text-primary-800',
-        FAIR: 'bg-amber-100 text-amber-800',
-        POOR: 'bg-red-100 text-red-700',
-      } as Record<string, string>
-    )[c] ?? 'bg-surface-100 text-surface-700'
-  )
+  const map: Record<string, string> = {
+    NEW: 'bg-green-100 text-green-800',
+    LIKE_NEW: 'bg-emerald-100 text-emerald-800',
+    GOOD: 'bg-primary-100 text-primary-800',
+    FAIR: 'bg-amber-100 text-amber-800',
+    POOR: 'bg-red-100 text-red-700',
+  }
+  return map[c] ?? 'bg-surface-100 text-surface-700'
 }
 
 const tradePrefLabels: Record<string, string> = {
@@ -753,5 +930,13 @@ function relativeTime(iso: string): string {
   const days = Math.floor(hrs / 24)
   if (days < 7) return `${days}d ago`
   return new Date(iso).toLocaleDateString()
+}
+
+function fullDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  })
 }
 </script>
