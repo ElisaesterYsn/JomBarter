@@ -1,6 +1,5 @@
 <template>
   <div class="max-w-2xl mx-auto">
-    <!-- Page header -->
     <div class="mb-6">
       <router-link
         to="/my-listings"
@@ -22,9 +21,9 @@
         </svg>
         Back to My Listings
       </router-link>
-      <h1 class="text-2xl font-bold text-surface-800">Add a new listing</h1>
+      <h1 class="text-2xl font-bold text-surface-800">Offer Something</h1>
       <p class="mt-1 text-sm text-surface-500">
-        Describe your item so others know what you're offering
+        Tell the community what you have and what you're looking for in return
       </p>
     </div>
 
@@ -51,214 +50,265 @@
 
     <div class="card space-y-6">
       <form novalidate @submit.prevent="handleSubmit">
-        <!-- ── 1. Product Title ──────────────────────────────────────────── -->
-        <div>
-          <label for="title" class="form-label">
-            Product title <span class="text-red-500" aria-hidden="true">*</span>
-          </label>
-          <input
-            id="title"
-            v-model.trim="form.title"
-            type="text"
-            placeholder='e.g. "iPhone 13 128GB"'
-            class="form-input"
-            :class="{ 'border-red-400': errors.title }"
-            maxlength="120"
-            @blur="validate('title')"
-          />
-          <div class="flex justify-between mt-1">
-            <p v-if="errors.title" class="text-xs text-red-600">{{ errors.title }}</p>
-            <p class="text-xs text-surface-400 ml-auto">{{ form.title.length }}/120</p>
+        <!-- ══ WHAT I HAVE ══════════════════════════════════════════════════ -->
+        <div class="pb-5 border-b border-surface-100">
+          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
+            What I'm Offering
+          </h2>
+
+          <!-- Listing Type -->
+          <div class="mb-5">
+            <label class="form-label"
+              >What are you offering? <span class="text-red-500" aria-hidden="true">*</span></label
+            >
+            <div class="grid grid-cols-3 gap-2">
+              <label
+                v-for="opt in listingTypeOptions"
+                :key="opt.value"
+                class="flex flex-col items-center justify-center gap-1 cursor-pointer rounded-lg border-2 py-3 px-2 text-xs font-medium text-center transition"
+                :class="
+                  form.listingType === opt.value
+                    ? 'border-primary-600 bg-primary-50 text-primary-700'
+                    : 'border-surface-200 text-surface-600 hover:border-primary-400'
+                "
+              >
+                <input type="radio" :value="opt.value" v-model="form.listingType" class="sr-only" />
+                <span class="text-lg" aria-hidden="true">{{ opt.emoji }}</span>
+                {{ opt.label }}
+              </label>
+            </div>
           </div>
-        </div>
 
-        <!-- ── 2. Product Description ────────────────────────────────────── -->
-        <div>
-          <label for="description" class="form-label">
-            Description <span class="text-red-500" aria-hidden="true">*</span>
-          </label>
-          <p class="text-xs text-surface-400 mb-2">
-            Include: what the item is, how long it's been used, reason for trading, any defects,
-            accessories included.
-          </p>
-          <textarea
-            id="description"
-            v-model.trim="form.description"
-            rows="6"
-            placeholder='e.g. "Used iPhone 13 128GB. Fully functional with minor scratches on the frame. Battery health 87%. Comes with original box and charging cable."'
-            class="form-input resize-y"
-            :class="{ 'border-red-400': errors.description }"
-            maxlength="3000"
-            @blur="validate('description')"
-          ></textarea>
-          <div class="flex justify-between mt-1">
-            <p v-if="errors.description" class="text-xs text-red-600">{{ errors.description }}</p>
-            <p class="text-xs text-surface-400 ml-auto">{{ form.description.length }}/3000</p>
-          </div>
-        </div>
-
-        <!-- ── 3. Category ──────────────────────────────────────────────── -->
-        <div>
-          <label for="category" class="form-label">
-            Category <span class="text-red-500" aria-hidden="true">*</span>
-          </label>
-          <select
-            id="category"
-            v-model="form.categoryId"
-            class="form-input"
-            :class="{ 'border-red-400': errors.categoryId }"
-            :disabled="categoriesLoading"
-            @blur="validate('categoryId')"
-          >
-            <option value="" disabled>
-              {{ categoriesLoading ? 'Loading categories…' : 'Select a category…' }}
-            </option>
-            <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-              {{ cat.name }}
-            </option>
-          </select>
-          <p v-if="errors.categoryId" class="mt-1 text-xs text-red-600">{{ errors.categoryId }}</p>
-        </div>
-
-        <!-- ── 4. Condition ─────────────────────────────────────────────── -->
-        <div>
-          <label class="form-label">
-            Condition <span class="text-red-500" aria-hidden="true">*</span>
-          </label>
-          <div class="grid grid-cols-5 gap-2">
-            <label
-              v-for="opt in conditionOptions"
-              :key="opt.value"
-              class="flex flex-col items-center justify-center gap-1 cursor-pointer rounded-lg border-2 py-2.5 px-1 text-xs font-medium text-center transition"
-              :class="
-                form.condition === opt.value
-                  ? 'border-primary-600 bg-primary-50 text-primary-700'
-                  : 'border-surface-200 text-surface-600 hover:border-primary-400'
-              "
+          <!-- Title -->
+          <div class="mb-5">
+            <label for="title" class="form-label"
+              >Product title <span class="text-red-500" aria-hidden="true">*</span></label
             >
-              <input
-                type="radio"
-                :value="opt.value"
-                v-model="form.condition"
-                class="sr-only"
-                @change="errors.condition = ''"
-              />
-              <span class="text-base" aria-hidden="true">{{ opt.emoji }}</span>
-              {{ opt.label }}
-            </label>
-          </div>
-          <p v-if="errors.condition" class="mt-1 text-xs text-red-600">{{ errors.condition }}</p>
-        </div>
-
-        <!-- ── 5. Location ──────────────────────────────────────────────── -->
-        <div>
-          <label for="location" class="form-label">
-            Location
-            <span class="text-surface-400 font-normal text-xs"
-              >(optional — city/area only, not full address)</span
-            >
-          </label>
-          <input
-            id="location"
-            v-model.trim="form.location"
-            type="text"
-            placeholder='e.g. "Kota Kinabalu, Sabah"'
-            class="form-input"
-            maxlength="120"
-          />
-        </div>
-
-        <!-- ── 6. Images ────────────────────────────────────────────────── -->
-        <div>
-          <label class="form-label">
-            Photos
-            <span class="text-surface-400 font-normal text-xs"
-              >(optional — up to 8 images, max 10 MB each)</span
-            >
-          </label>
-          <div
-            class="mt-1 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition"
-            :class="
-              isDragging
-                ? 'border-primary-500 bg-primary-50'
-                : 'border-surface-300 hover:border-primary-400 hover:bg-primary-50/40'
-            "
-            @dragover.prevent="isDragging = true"
-            @dragleave.prevent="isDragging = false"
-            @drop.prevent="handleDrop"
-            @click="fileInputRef?.click()"
-          >
-            <svg
-              class="mx-auto w-10 h-10 text-surface-300 mb-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="1.5"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-              />
-            </svg>
-            <p class="text-sm text-surface-600">
-              Drag &amp; drop photos here, or
-              <span class="text-primary-600 font-medium">browse</span>
-            </p>
-            <p class="mt-1 text-xs text-surface-400">
-              Upload clear photos showing the actual condition of your item. JPEG, PNG, WebP, GIF ·
-              Max 10 MB each · {{ imageFiles.length }}/8 added
-            </p>
             <input
-              ref="fileInputRef"
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              class="sr-only"
-              @change="handleFileChange"
+              id="title"
+              v-model.trim="form.title"
+              type="text"
+              placeholder='e.g. "iPhone 13 128GB"'
+              class="form-input"
+              :class="{ 'border-red-400': errors.title }"
+              maxlength="120"
+              @blur="validate('title')"
             />
+            <div class="flex justify-between mt-1">
+              <p v-if="errors.title" class="text-xs text-red-600">{{ errors.title }}</p>
+              <p class="text-xs text-surface-400 ml-auto">{{ form.title.length }}/120</p>
+            </div>
           </div>
-          <p v-if="errors.images" class="mt-1 text-xs text-red-600">{{ errors.images }}</p>
 
-          <!-- Preview grid -->
-          <div v-if="imageFiles.length" class="mt-3 grid grid-cols-4 gap-2">
-            <div
-              v-for="(item, i) in imageFiles"
-              :key="i"
-              class="relative rounded-lg overflow-hidden bg-surface-100 aspect-square group"
+          <!-- Description -->
+          <div class="mb-5">
+            <label for="description" class="form-label"
+              >Description <span class="text-red-500" aria-hidden="true">*</span></label
             >
-              <img :src="item.preview" :alt="item.file.name" class="w-full h-full object-cover" />
-              <!-- First image badge -->
-              <span
-                v-if="i === 0"
-                class="absolute bottom-1 left-1 text-[10px] font-semibold bg-primary-700 text-white px-1.5 py-0.5 rounded"
-                >Cover</span
+            <p class="text-xs text-surface-400 mb-2">
+              Include: what it is, how long used, reason for trading, defects, accessories.
+            </p>
+            <textarea
+              id="description"
+              v-model.trim="form.description"
+              rows="5"
+              class="form-input resize-y"
+              :class="{ 'border-red-400': errors.description }"
+              maxlength="3000"
+              @blur="validate('description')"
+            ></textarea>
+            <div class="flex justify-between mt-1">
+              <p v-if="errors.description" class="text-xs text-red-600">{{ errors.description }}</p>
+              <p class="text-xs text-surface-400 ml-auto">{{ form.description.length }}/3000</p>
+            </div>
+          </div>
+
+          <!-- Category + Condition row -->
+          <div class="grid sm:grid-cols-2 gap-4 mb-5">
+            <div>
+              <label for="category" class="form-label"
+                >Category <span class="text-red-500" aria-hidden="true">*</span></label
               >
-              <button
-                type="button"
-                class="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs"
-                :aria-label="`Remove ${item.file.name}`"
-                @click.stop="removeFile(i)"
+              <select
+                id="category"
+                v-model="form.categoryId"
+                class="form-input"
+                :class="{ 'border-red-400': errors.categoryId }"
+                :disabled="categoriesLoading"
+                @blur="validate('categoryId')"
               >
-                ✕
-              </button>
+                <option value="" disabled>
+                  {{ categoriesLoading ? 'Loading…' : 'Select category…' }}
+                </option>
+                <option v-for="cat in categories" :key="cat.id" :value="cat.id">
+                  {{ cat.name }}
+                </option>
+              </select>
+              <p v-if="errors.categoryId" class="mt-1 text-xs text-red-600">
+                {{ errors.categoryId }}
+              </p>
+            </div>
+            <div>
+              <label class="form-label"
+                >Condition <span class="text-red-500" aria-hidden="true">*</span></label
+              >
+              <div class="grid grid-cols-5 gap-1.5">
+                <label
+                  v-for="opt in conditionOptions"
+                  :key="opt.value"
+                  class="flex flex-col items-center justify-center gap-0.5 cursor-pointer rounded-lg border-2 py-2 text-[11px] font-medium text-center transition"
+                  :class="
+                    form.condition === opt.value
+                      ? 'border-primary-600 bg-primary-50 text-primary-700'
+                      : 'border-surface-200 text-surface-600 hover:border-primary-400'
+                  "
+                >
+                  <input
+                    type="radio"
+                    :value="opt.value"
+                    v-model="form.condition"
+                    class="sr-only"
+                    @change="errors.condition = ''"
+                  />
+                  <span class="text-sm" aria-hidden="true">{{ opt.emoji }}</span
+                  >{{ opt.label }}
+                </label>
+              </div>
+              <p v-if="errors.condition" class="mt-1 text-xs text-red-600">
+                {{ errors.condition }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Estimated Value + Location row -->
+          <div class="grid sm:grid-cols-2 gap-4 mb-5">
+            <div>
+              <label for="estimatedValue" class="form-label"
+                >Estimated value
+                <span class="text-surface-400 font-normal text-xs">(optional)</span></label
+              >
+              <div class="relative">
+                <span
+                  class="absolute left-3 top-1/2 -translate-y-1/2 text-surface-500 text-sm font-medium pointer-events-none"
+                  >RM</span
+                >
+                <input
+                  id="estimatedValue"
+                  v-model.number="form.estimatedValue"
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  class="form-input pl-10"
+                  :class="{ 'border-red-400': errors.estimatedValue }"
+                  @blur="validate('estimatedValue')"
+                />
+              </div>
+              <p v-if="errors.estimatedValue" class="mt-1 text-xs text-red-600">
+                {{ errors.estimatedValue }}
+              </p>
+              <p v-else class="mt-1 text-xs text-surface-400">Estimated, not the selling price</p>
+            </div>
+            <div>
+              <label for="location" class="form-label"
+                >Location
+                <span class="text-surface-400 font-normal text-xs">(optional)</span></label
+              >
+              <input
+                id="location"
+                v-model.trim="form.location"
+                type="text"
+                placeholder='e.g. "Kota Kinabalu, Sabah"'
+                class="form-input"
+                maxlength="120"
+              />
+              <p class="mt-1 text-xs text-surface-400">City/area only — no full address</p>
+            </div>
+          </div>
+
+          <!-- Photos -->
+          <div>
+            <label class="form-label"
+              >Photos
+              <span class="text-surface-400 font-normal text-xs"
+                >(optional — up to 8, max 10 MB each)</span
+              ></label
+            >
+            <div
+              class="mt-1 border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition"
+              :class="
+                isDragging
+                  ? 'border-primary-500 bg-primary-50'
+                  : 'border-surface-300 hover:border-primary-400 hover:bg-primary-50/40'
+              "
+              @dragover.prevent="isDragging = true"
+              @dragleave.prevent="isDragging = false"
+              @drop.prevent="handleDrop"
+              @click="fileInputRef?.click()"
+            >
+              <svg
+                class="mx-auto w-9 h-9 text-surface-300 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              <p class="text-sm text-surface-600">
+                Drag &amp; drop, or <span class="text-primary-600 font-medium">browse</span>
+              </p>
+              <p class="mt-1 text-xs text-surface-400">
+                JPEG, PNG, WebP, GIF · {{ imageFiles.length }}/8
+              </p>
+              <input
+                ref="fileInputRef"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                class="sr-only"
+                @change="handleFileChange"
+              />
+            </div>
+            <p v-if="errors.images" class="mt-1 text-xs text-red-600">{{ errors.images }}</p>
+            <div v-if="imageFiles.length" class="mt-3 grid grid-cols-4 gap-2">
+              <div
+                v-for="(item, i) in imageFiles"
+                :key="i"
+                class="relative rounded-lg overflow-hidden bg-surface-100 aspect-square group"
+              >
+                <img :src="item.preview" :alt="item.file.name" class="w-full h-full object-cover" />
+                <span
+                  v-if="i === 0"
+                  class="absolute bottom-1 left-1 text-[10px] font-semibold bg-primary-700 text-white px-1.5 py-0.5 rounded"
+                  >Cover</span
+                >
+                <button
+                  type="button"
+                  class="absolute top-1 right-1 w-6 h-6 bg-black/60 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-xs"
+                  :aria-label="`Remove ${item.file.name}`"
+                  @click.stop="removeFile(i)"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- ── 7. Looking For ───────────────────────────────────────────── -->
-        <div>
-          <label for="lookingFor" class="form-label">
-            What are you looking for?
-            <span class="text-surface-400 font-normal text-xs">(optional)</span>
-          </label>
-          <p class="text-xs text-surface-400 mb-2">
-            Describe what you want in exchange. Be specific or tick "Open to offers".
-          </p>
+        <!-- ══ WHAT I WANT ══════════════════════════════════════════════════ -->
+        <div class="pb-5 border-b border-surface-100">
+          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
+            What I'm Looking For
+          </h2>
 
           <!-- Open to offers toggle -->
-          <label class="flex items-center gap-2 mb-3 cursor-pointer select-none">
+          <label class="flex items-center gap-2 mb-4 cursor-pointer select-none">
             <input
               type="checkbox"
               v-model="openToOffers"
@@ -268,28 +318,125 @@
             <span class="text-sm text-surface-700 font-medium">Open to reasonable offers</span>
           </label>
 
-          <textarea
-            id="lookingFor"
-            v-model.trim="form.lookingFor"
-            rows="3"
-            placeholder='e.g. "Looking for a Samsung S23 or similar Android phone."'
-            class="form-input resize-y"
-            :class="{ 'border-red-400': errors.lookingFor, 'opacity-50': openToOffers }"
-            :disabled="openToOffers"
-            maxlength="1000"
-            @blur="validate('lookingFor')"
-          ></textarea>
-          <div class="flex justify-between mt-1">
-            <p v-if="errors.lookingFor" class="text-xs text-red-600">{{ errors.lookingFor }}</p>
-            <p class="text-xs text-surface-400 ml-auto">{{ form.lookingFor.length }}/1000</p>
+          <!-- Free-text lookingFor -->
+          <div class="mb-5">
+            <label for="lookingFor" class="form-label"
+              >Specific preference
+              <span class="text-surface-400 font-normal text-xs">(optional)</span></label
+            >
+            <textarea
+              id="lookingFor"
+              v-model.trim="form.lookingFor"
+              rows="2"
+              placeholder='e.g. "Samsung S23 or similar Android phone"'
+              class="form-input resize-y"
+              :class="{ 'border-red-400': errors.lookingFor, 'opacity-50': openToOffers }"
+              :disabled="openToOffers"
+              maxlength="1000"
+              @blur="validate('lookingFor')"
+            ></textarea>
+            <div class="flex justify-between mt-1">
+              <p v-if="errors.lookingFor" class="text-xs text-red-600">{{ errors.lookingFor }}</p>
+              <p class="text-xs text-surface-400 ml-auto">{{ form.lookingFor.length }}/1000</p>
+            </div>
+          </div>
+
+          <!-- Trade preferences (multi-select chips) -->
+          <div class="mb-5">
+            <label class="form-label"
+              >Trade preference
+              <span class="text-surface-400 font-normal text-xs"
+                >(select all that apply)</span
+              ></label
+            >
+            <div class="flex flex-wrap gap-2 mt-1">
+              <label
+                v-for="opt in tradePreferenceOptions"
+                :key="opt.value"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-xs font-medium transition"
+                :class="
+                  form.tradePreferences.includes(opt.value)
+                    ? 'border-primary-500 bg-primary-600 text-white'
+                    : 'border-surface-200 bg-white text-surface-700 hover:border-primary-400'
+                "
+              >
+                <input
+                  type="checkbox"
+                  :value="opt.value"
+                  v-model="form.tradePreferences"
+                  class="sr-only"
+                />
+                {{ opt.label }}
+              </label>
+            </div>
+          </div>
+
+          <!-- Interested-in categories -->
+          <div>
+            <label class="form-label"
+              >I'm interested in
+              <span class="text-surface-400 font-normal text-xs"
+                >(optional — what categories would you accept?)</span
+              ></label
+            >
+            <div v-if="categoriesLoading" class="text-xs text-surface-400 mt-1">
+              Loading categories…
+            </div>
+            <div v-else class="flex flex-wrap gap-2 mt-1">
+              <label
+                v-for="cat in categories"
+                :key="cat.id"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-xs font-medium transition"
+                :class="
+                  form.interestedInCategories.includes(cat.id)
+                    ? 'border-primary-500 bg-primary-600 text-white'
+                    : 'border-surface-200 bg-white text-surface-700 hover:border-primary-400'
+                "
+              >
+                <input
+                  type="checkbox"
+                  :value="cat.id"
+                  v-model="form.interestedInCategories"
+                  class="sr-only"
+                />
+                {{ cat.name }}
+              </label>
+            </div>
           </div>
         </div>
 
-        <!-- ── Submit actions ───────────────────────────────────────────── -->
-        <div class="flex flex-col sm:flex-row gap-3 pt-2 border-t border-surface-100">
+        <!-- ══ EXCHANGE METHOD ══════════════════════════════════════════════ -->
+        <div class="pb-5 border-b border-surface-100">
+          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
+            Exchange Method
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            <label
+              v-for="opt in exchangeMethodOptions"
+              :key="opt.value"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border cursor-pointer text-xs font-medium transition"
+              :class="
+                form.exchangeMethods.includes(opt.value)
+                  ? 'border-primary-500 bg-primary-600 text-white'
+                  : 'border-surface-200 bg-white text-surface-700 hover:border-primary-400'
+              "
+            >
+              <input
+                type="checkbox"
+                :value="opt.value"
+                v-model="form.exchangeMethods"
+                class="sr-only"
+              />
+              <span aria-hidden="true">{{ opt.emoji }}</span> {{ opt.label }}
+            </label>
+          </div>
+        </div>
+
+        <!-- ══ ACTIONS ══════════════════════════════════════════════════════ -->
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             type="submit"
-            class="btn-secondary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            class="btn-secondary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
             :disabled="listingStore.submitting"
             @click="submitAction = 'draft'"
           >
@@ -314,7 +461,7 @@
           </button>
           <button
             type="submit"
-            class="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            class="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
             :disabled="listingStore.submitting"
             @click="submitAction = 'publish'"
           >
@@ -347,47 +494,22 @@
 import { reactive, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListingStore } from '@/stores/listing'
-import listingService, { type Category, type ListingCondition } from '@/services/listingService'
+import listingService, {
+  type Category,
+  type ListingCondition,
+  type ListingType,
+  serializeCommaList,
+} from '@/services/listingService'
 
 const router = useRouter()
 const listingStore = useListingStore()
 
-// ── Categories ────────────────────────────────────────────────────────────────
-const categories = ref<Category[]>([])
-const categoriesLoading = ref(true)
-
-onMounted(async () => {
-  try {
-    categories.value = await listingService.getCategories()
-  } catch {
-    // non-fatal — user sees empty select
-  } finally {
-    categoriesLoading.value = false
-  }
-})
-
-// ── Form state ────────────────────────────────────────────────────────────────
-const form = reactive({
-  title: '',
-  description: '',
-  categoryId: '',
-  condition: '' as ListingCondition | '',
-  location: '',
-  lookingFor: '',
-})
-
-const errors = reactive({
-  title: '',
-  description: '',
-  categoryId: '',
-  condition: '',
-  lookingFor: '',
-  images: '',
-})
-
-const submitAction = ref<'draft' | 'publish'>('draft')
-const openToOffers = ref(false)
-
+// ── Options ───────────────────────────────────────────────────────────────────
+const listingTypeOptions = [
+  { value: 'PHYSICAL_ITEM', label: 'Physical Item', emoji: '📦' },
+  { value: 'SERVICE', label: 'Service', emoji: '🛠️' },
+  { value: 'ITEM_AND_SERVICE', label: 'Item + Service', emoji: '🤝' },
+]
 const conditionOptions = [
   { value: 'NEW', label: 'New', emoji: '✨' },
   { value: 'LIKE_NEW', label: 'Like New', emoji: '🌟' },
@@ -395,14 +517,65 @@ const conditionOptions = [
   { value: 'FAIR', label: 'Fair', emoji: '🔧' },
   { value: 'POOR', label: 'Poor', emoji: '⚠️' },
 ]
+const tradePreferenceOptions = [
+  { value: 'SPECIFIC_ITEM', label: 'Specific item only' },
+  { value: 'SIMILAR_VALUE', label: 'Similar value items' },
+  { value: 'OPEN_OFFERS', label: 'Open to offers' },
+  { value: 'MULTIPLE_ITEMS', label: 'Multiple items for one' },
+  { value: 'ITEM_SERVICE', label: 'Item + service' },
+]
+const exchangeMethodOptions = [
+  { value: 'MEETUP', label: 'Meet-up', emoji: '🤝' },
+  { value: 'SELF_PICKUP', label: 'Self pickup', emoji: '🚶' },
+  { value: 'DELIVERY', label: 'Delivery', emoji: '🚗' },
+  { value: 'SHIPPING', label: 'Shipping', emoji: '📬' },
+  { value: 'ONLINE', label: 'Online/Digital', emoji: '💻' },
+]
+
+// ── Categories ────────────────────────────────────────────────────────────────
+const categories = ref<Category[]>([])
+const categoriesLoading = ref(true)
+onMounted(async () => {
+  try {
+    categories.value = await listingService.getCategories()
+  } catch {
+    /* non-fatal */
+  } finally {
+    categoriesLoading.value = false
+  }
+})
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+const form = reactive({
+  title: '',
+  description: '',
+  categoryId: '',
+  condition: '' as ListingCondition | '',
+  listingType: 'PHYSICAL_ITEM' as ListingType,
+  estimatedValue: null as number | null,
+  location: '',
+  lookingFor: '',
+  tradePreferences: [] as string[],
+  interestedInCategories: [] as string[],
+  exchangeMethods: [] as string[],
+})
+const errors = reactive({
+  title: '',
+  description: '',
+  categoryId: '',
+  condition: '',
+  estimatedValue: '',
+  lookingFor: '',
+  images: '',
+})
+const submitAction = ref<'draft' | 'publish'>('draft')
+const openToOffers = ref(false)
 
 function onOpenToOffersChange() {
   if (openToOffers.value) {
     form.lookingFor = 'Open to reasonable offers'
     errors.lookingFor = ''
-  } else {
-    form.lookingFor = ''
-  }
+  } else form.lookingFor = ''
 }
 
 // ── Images ────────────────────────────────────────────────────────────────────
@@ -413,82 +586,83 @@ interface ImageItem {
 const imageFiles = ref<ImageItem[]>([])
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
-const MAX_IMAGES = 8
+const MAX_IMG = 8
 const MAX_BYTES = 10 * 1024 * 1024
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 function addFiles(raw: FileList | File[]) {
   errors.images = ''
-  for (const file of Array.from(raw)) {
-    if (imageFiles.value.length >= MAX_IMAGES) {
-      errors.images = `Maximum ${MAX_IMAGES} photos allowed.`
+  for (const f of Array.from(raw)) {
+    if (imageFiles.value.length >= MAX_IMG) {
+      errors.images = `Max ${MAX_IMG} photos.`
       break
     }
-    if (!ALLOWED.includes(file.type)) {
-      errors.images = `"${file.name}" is not an accepted image type.`
+    if (!ALLOWED.includes(f.type)) {
+      errors.images = `"${f.name}" is not an accepted image type.`
       continue
     }
-    if (file.size > MAX_BYTES) {
-      errors.images = `"${file.name}" exceeds the 10 MB limit.`
+    if (f.size > MAX_BYTES) {
+      errors.images = `"${f.name}" exceeds 10 MB.`
       continue
     }
-    imageFiles.value.push({ file, preview: URL.createObjectURL(file) })
+    imageFiles.value.push({ file: f, preview: URL.createObjectURL(f) })
   }
 }
-
 function handleFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  if (input.files) addFiles(input.files)
-  input.value = ''
+  const i = e.target as HTMLInputElement
+  if (i.files) addFiles(i.files)
+  i.value = ''
 }
-
 function handleDrop(e: DragEvent) {
   isDragging.value = false
   if (e.dataTransfer?.files) addFiles(e.dataTransfer.files)
 }
-
-function removeFile(index: number) {
-  URL.revokeObjectURL(imageFiles.value[index].preview)
-  imageFiles.value.splice(index, 1)
+function removeFile(i: number) {
+  URL.revokeObjectURL(imageFiles.value[i].preview)
+  imageFiles.value.splice(i, 1)
 }
-
 onUnmounted(() => imageFiles.value.forEach((i) => URL.revokeObjectURL(i.preview)))
 
 // ── Validation ────────────────────────────────────────────────────────────────
 function validate(field: keyof typeof errors) {
   switch (field) {
     case 'title':
-      if (!form.title) errors.title = 'Product title is required.'
-      else if (form.title.length < 3) errors.title = 'Must be at least 3 characters.'
-      else if (form.title.length > 120) errors.title = 'Must be at most 120 characters.'
-      else errors.title = ''
+      errors.title = !form.title
+        ? 'Required.'
+        : form.title.length < 3
+          ? 'Min 3 chars.'
+          : form.title.length > 120
+            ? 'Max 120 chars.'
+            : ''
       break
     case 'description':
-      if (!form.description) errors.description = 'Description is required.'
-      else if (form.description.length < 10) errors.description = 'Must be at least 10 characters.'
-      else if (form.description.length > 3000)
-        errors.description = 'Must be at most 3000 characters.'
-      else errors.description = ''
+      errors.description = !form.description
+        ? 'Required.'
+        : form.description.length < 10
+          ? 'Min 10 chars.'
+          : form.description.length > 3000
+            ? 'Max 3000 chars.'
+            : ''
       break
     case 'categoryId':
-      errors.categoryId = form.categoryId ? '' : 'Please select a category.'
+      errors.categoryId = form.categoryId ? '' : 'Required.'
       break
     case 'condition':
-      errors.condition = form.condition ? '' : 'Please select a condition.'
+      errors.condition = form.condition ? '' : 'Required.'
+      break
+    case 'estimatedValue':
+      errors.estimatedValue =
+        form.estimatedValue !== null && form.estimatedValue < 0 ? 'Must be ≥ 0.' : ''
       break
     case 'lookingFor':
-      if (form.lookingFor.length > 1000) errors.lookingFor = 'Must be at most 1000 characters.'
-      else errors.lookingFor = ''
+      errors.lookingFor = form.lookingFor.length > 1000 ? 'Max 1000 chars.' : ''
       break
   }
 }
-
-function validateAll(): boolean {
-  validate('title')
-  validate('description')
-  validate('categoryId')
-  validate('condition')
-  validate('lookingFor')
+function validateAll() {
+  ;(
+    ['title', 'description', 'categoryId', 'condition', 'estimatedValue', 'lookingFor'] as const
+  ).forEach(validate)
   return !Object.values(errors).some(Boolean)
 }
 
@@ -496,7 +670,6 @@ function validateAll(): boolean {
 async function handleSubmit() {
   listingStore.clearError()
   if (!validateAll()) return
-
   try {
     const listing = await listingStore.create(
       {
@@ -504,19 +677,20 @@ async function handleSubmit() {
         description: form.description,
         categoryId: form.categoryId,
         condition: form.condition as ListingCondition,
+        listingType: form.listingType,
+        estimatedValue: form.estimatedValue ?? undefined,
         location: form.location || undefined,
         lookingFor: form.lookingFor || undefined,
+        tradePreference: serializeCommaList(form.tradePreferences),
+        exchangeMethod: serializeCommaList(form.exchangeMethods),
+        interestedInCategories: serializeCommaList(form.interestedInCategories),
       },
       imageFiles.value.map((i) => i.file),
     )
-
-    if (submitAction.value === 'publish') {
-      await listingStore.publish(listing.id)
-    }
-
+    if (submitAction.value === 'publish') await listingStore.publish(listing.id)
     router.push('/my-listings')
   } catch {
-    // error displayed via banner
+    /* banner handles */
   }
 }
 </script>

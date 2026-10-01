@@ -1,9 +1,17 @@
 import apiService from './apiService'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Enum types ────────────────────────────────────────────────────────────────
 
 export type ListingCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR'
 export type ListingStatus = 'DRAFT' | 'ACTIVE' | 'TRADED' | 'ARCHIVED' | 'REMOVED'
+export type ListingType = 'PHYSICAL_ITEM' | 'SERVICE' | 'ITEM_AND_SERVICE'
+
+export type TradePreference =
+  'SPECIFIC_ITEM' | 'SIMILAR_VALUE' | 'OPEN_OFFERS' | 'MULTIPLE_ITEMS' | 'ITEM_SERVICE'
+
+export type ExchangeMethod = 'MEETUP' | 'SELF_PICKUP' | 'DELIVERY' | 'SHIPPING' | 'ONLINE'
+
+// ── Entity types ──────────────────────────────────────────────────────────────
 
 export interface Category {
   id: string
@@ -27,10 +35,17 @@ export interface Listing {
   category: Category | null
   title: string
   description: string
+  listingType: ListingType
   condition: ListingCondition
   estimatedValue: number | null
   location: string | null
   lookingFor: string | null
+  /** Comma-separated TradePreference values stored in DB */
+  tradePreference: string | null
+  /** Comma-separated ExchangeMethod values stored in DB */
+  exchangeMethod: string | null
+  /** Comma-separated category ids the owner is interested in */
+  interestedInCategories: string | null
   status: ListingStatus
   images: ListingMedia[]
   createdAt: string
@@ -63,29 +78,41 @@ export interface CreateListingPayload {
   description: string
   categoryId: string
   condition: ListingCondition
+  listingType?: ListingType
+  estimatedValue?: number
   location?: string
   lookingFor?: string
+  tradePreference?: string // comma-separated
+  exchangeMethod?: string // comma-separated
+  interestedInCategories?: string // comma-separated
 }
 
-export interface UpdateListingPayload {
-  title?: string
-  description?: string
-  categoryId?: string
-  condition?: ListingCondition
-  location?: string
-  lookingFor?: string
-}
+export interface UpdateListingPayload extends Partial<CreateListingPayload> {}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/**
- * Build a FormData for multipart/form-data submission.
- * Text fields are appended as plain values; images[] are appended under the 'images' key.
- */
-function buildFormData(fields: Record<string, string | undefined>, images: File[]): FormData {
+/** Parse a nullable comma-separated DB string into a typed array */
+export function parseCommaList<T extends string>(value: string | null | undefined): T[] {
+  if (!value) return []
+  return value
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean) as T[]
+}
+
+/** Serialize a typed array back to a comma-separated string for the API */
+export function serializeCommaList(values: string[]): string | undefined {
+  const trimmed = values.filter(Boolean)
+  return trimmed.length ? trimmed.join(',') : undefined
+}
+
+function buildFormData(
+  fields: Record<string, string | number | undefined>,
+  images: File[],
+): FormData {
   const fd = new FormData()
   for (const [key, val] of Object.entries(fields)) {
-    if (val !== undefined && val !== '') fd.append(key, val)
+    if (val !== undefined && val !== '') fd.append(key, String(val))
   }
   for (const img of images) fd.append('images', img)
   return fd
@@ -94,17 +121,13 @@ function buildFormData(fields: Record<string, string | undefined>, images: File[
 // ── Service ───────────────────────────────────────────────────────────────────
 
 const listingService = {
-  // ── Categories ──────────────────────────────────────────────────────────────
-
-  /** Fetch all active categories — public, no auth required */
+  // ── Categories ───────────────────────────────────────────────────────────────
   async getCategories(): Promise<Category[]> {
     const res = await apiService.get<{ data: { categories: Category[] } }>('/categories')
     return res.data.data.categories
   },
 
   // ── Feed ─────────────────────────────────────────────────────────────────────
-
-  /** Browse all active listings — public, no auth required */
   async getPublicFeed(page = 1, limit = 12): Promise<FeedResponse> {
     const res = await apiService.get<{ data: FeedResponse }>(
       `/listings?page=${page}&limit=${limit}`,
@@ -112,9 +135,7 @@ const listingService = {
     return res.data.data
   },
 
-  // ── CRUD ─────────────────────────────────────────────────────────────────────
-
-  /** Create a new listing (multipart/form-data, images optional) */
+  // ── CRUD ──────────────────────────────────────────────────────────────────────
   async create(payload: CreateListingPayload, images: File[] = []): Promise<Listing> {
     const fd = buildFormData(
       {
@@ -122,8 +143,13 @@ const listingService = {
         description: payload.description,
         categoryId: payload.categoryId,
         condition: payload.condition,
+        listingType: payload.listingType,
+        estimatedValue: payload.estimatedValue,
         location: payload.location,
         lookingFor: payload.lookingFor,
+        tradePreference: payload.tradePreference,
+        exchangeMethod: payload.exchangeMethod,
+        interestedInCategories: payload.interestedInCategories,
       },
       images,
     )
@@ -133,19 +159,16 @@ const listingService = {
     return res.data.data.listing
   },
 
-  /** Get all listings belonging to the authenticated user */
   async getMyListings(): Promise<Listing[]> {
     const res = await apiService.get<{ data: { listings: Listing[] } }>('/listings/my')
     return res.data.data.listings
   },
 
-  /** Get a single listing by id */
   async getOne(id: string): Promise<Listing> {
     const res = await apiService.get<{ data: { listing: Listing } }>(`/listings/${id}`)
     return res.data.data.listing
   },
 
-  /** Update a listing (multipart/form-data) */
   async update(id: string, payload: UpdateListingPayload, images: File[] = []): Promise<Listing> {
     const fd = buildFormData(
       {
@@ -153,8 +176,13 @@ const listingService = {
         description: payload.description,
         categoryId: payload.categoryId,
         condition: payload.condition,
+        listingType: payload.listingType,
+        estimatedValue: payload.estimatedValue,
         location: payload.location,
         lookingFor: payload.lookingFor,
+        tradePreference: payload.tradePreference,
+        exchangeMethod: payload.exchangeMethod,
+        interestedInCategories: payload.interestedInCategories,
       },
       images,
     )
@@ -164,43 +192,35 @@ const listingService = {
     return res.data.data.listing
   },
 
-  /** Delete a single image from a listing */
   async deleteMedia(listingId: string, mediaId: string): Promise<void> {
     await apiService.delete(`/listings/${listingId}/media/${mediaId}`)
   },
 
-  /** Delete an entire listing */
   async remove(id: string): Promise<void> {
     await apiService.delete(`/listings/${id}`)
   },
 
-  /** Publish a listing (DRAFT → ACTIVE) */
   async publish(id: string): Promise<Listing> {
     const res = await apiService.patch<{ data: { listing: Listing } }>(`/listings/${id}/publish`)
     return res.data.data.listing
   },
 
-  /** Unpublish a listing (ACTIVE → DRAFT) */
   async unpublish(id: string): Promise<Listing> {
     const res = await apiService.patch<{ data: { listing: Listing } }>(`/listings/${id}/unpublish`)
+    return res.data.data.listing
+  },
+
+  async markAsTraded(id: string): Promise<Listing> {
+    const res = await apiService.patch<{ data: { listing: Listing } }>(`/listings/${id}/traded`)
     return res.data.data.listing
   },
 
   /** Resolve a stored filename to a full URL for display */
   mediaUrl(filename: string | null | undefined): string | null {
     if (!filename) return null
-    // Already an absolute URL (future S3 migration)
     if (filename.startsWith('http')) return filename
-
     const base = (import.meta.env.VITE_API_BASE_URL as string) || '/api'
-
-    if (base.startsWith('/')) {
-      // Relative base (dev with Vite proxy): /api → /uploads/<filename>
-      // The proxy in vite.config.ts forwards /uploads/* to the backend.
-      return `/uploads/${filename}`
-    }
-
-    // Absolute base (production): strip /api suffix to get server root
+    if (base.startsWith('/')) return `/uploads/${filename}`
     const serverRoot = base.replace(/\/api\/?$/, '')
     return `${serverRoot}/uploads/${filename}`
   },

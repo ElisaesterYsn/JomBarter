@@ -57,6 +57,12 @@ const router = createRouter({
       component: () => import('@/pages/EditListingView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/offers',
+      name: 'offers',
+      component: () => import('@/pages/OffersView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 

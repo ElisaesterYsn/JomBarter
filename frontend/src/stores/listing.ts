@@ -124,6 +124,16 @@ export const useListingStore = defineStore('listing', () => {
     }
   }
 
+  async function markAsTraded(id: string) {
+    error.value = null
+    try {
+      syncListing(await listingService.markAsTraded(id))
+    } catch (err: any) {
+      error.value = extractMessage(err)
+      throw err
+    }
+  }
+
   function clearError() {
     error.value = null
   }
@@ -160,6 +170,7 @@ export const useListingStore = defineStore('listing', () => {
     deleteMedia,
     publish,
     unpublish,
+    markAsTraded,
     clearError,
     clearCurrent,
   }

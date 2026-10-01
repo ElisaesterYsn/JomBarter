@@ -1,24 +1,50 @@
 <template>
   <div class="max-w-5xl mx-auto space-y-6">
-
     <!-- Page header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-surface-800">My Listings</h1>
         <p class="mt-1 text-sm text-surface-500">Manage the items you want to barter</p>
       </div>
-      <router-link to="/my-listings/create" class="btn-primary px-5 py-2.5 flex items-center gap-2 self-start sm:self-auto">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      <router-link
+        to="/my-listings/create"
+        class="btn-primary px-5 py-2.5 flex items-center gap-2 self-start sm:self-auto"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
         </svg>
-        Add Listing
+        Offer Something
       </router-link>
     </div>
 
     <!-- Error banner -->
-    <div v-if="listingStore.error" class="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex items-start gap-2">
-      <svg class="w-5 h-5 shrink-0 mt-0.5 text-red-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    <div
+      v-if="listingStore.error"
+      class="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-700 flex items-start gap-2"
+      role="alert"
+    >
+      <svg
+        class="w-5 h-5 shrink-0 mt-0.5 text-red-500"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+          clip-rule="evenodd"
+        />
       </svg>
       {{ listingStore.error }}
     </div>
@@ -33,17 +59,49 @@
     </div>
 
     <!-- Empty state -->
-    <div v-else-if="!listingStore.loading && listingStore.myListings.length === 0" class="card text-center py-16">
-      <div class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <svg class="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+    <div
+      v-else-if="!listingStore.loading && listingStore.myListings.length === 0"
+      class="card text-center py-16"
+    >
+      <div
+        class="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4"
+      >
+        <svg
+          class="w-8 h-8 text-primary-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+          />
         </svg>
       </div>
       <h2 class="text-lg font-semibold text-surface-800 mb-2">No listings yet</h2>
-      <p class="text-surface-500 text-sm mb-6">Add your first item to start bartering with the community.</p>
-      <router-link to="/my-listings/create" class="btn-primary px-6 py-2.5 inline-flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      <p class="text-surface-500 text-sm mb-6">
+        Add your first item to start bartering with the community.
+      </p>
+      <router-link
+        to="/my-listings/create"
+        class="btn-primary px-6 py-2.5 inline-flex items-center gap-2"
+      >
+        <svg
+          class="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 4v16m8-8H4"
+          />
         </svg>
         Add your first listing
       </router-link>
@@ -65,27 +123,24 @@
               class="w-full h-full object-cover"
             />
           </template>
-          <template v-else-if="firstVideo(listing)">
-            <video
-              :src="firstVideo(listing)!"
-              class="w-full h-full object-cover"
-              muted
-              preload="metadata"
-            />
-            <div class="absolute inset-0 flex items-center justify-center bg-black/20">
-              <svg class="w-10 h-10 text-white drop-shadow" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-            </div>
-          </template>
           <template v-else>
             <div class="w-full h-full flex items-center justify-center text-surface-400">
-              <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              <svg
+                class="w-10 h-10"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
             </div>
           </template>
-
           <!-- Status badge -->
           <span
             class="absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full"
@@ -97,16 +152,33 @@
 
         <!-- Info -->
         <div class="flex-1">
-          <h3 class="font-semibold text-surface-800 leading-snug line-clamp-2">{{ listing.title }}</h3>
+          <h3 class="font-semibold text-surface-800 leading-snug line-clamp-2">
+            {{ listing.title }}
+          </h3>
           <p class="mt-1 text-xs text-surface-500 line-clamp-2">{{ listing.description }}</p>
           <div class="mt-2 flex items-center gap-2 flex-wrap">
-            <span class="inline-flex items-center text-xs bg-surface-100 text-surface-600 px-2 py-0.5 rounded-full font-medium">
+            <span
+              class="inline-flex items-center text-xs bg-surface-100 text-surface-600 px-2 py-0.5 rounded-full font-medium"
+            >
               {{ conditionLabel(listing.condition) }}
             </span>
-            <span v-if="listing.location" class="inline-flex items-center text-xs text-surface-400 gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <span
+              v-if="listing.location"
+              class="inline-flex items-center text-xs text-surface-400 gap-1"
+            >
+              <svg
+                class="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
               </svg>
               {{ listing.location }}
             </span>
@@ -114,36 +186,58 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center gap-2 pt-2 border-t border-surface-100">
-          <!-- Publish / Unpublish toggle -->
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-surface-100">
+          <!-- View (active only) -->
+          <router-link
+            v-if="listing.status === 'ACTIVE'"
+            :to="`/listings/${listing.id}`"
+            class="text-xs px-3 py-1.5 rounded-lg text-primary-600 hover:bg-primary-50 transition border border-primary-200 font-medium"
+          >
+            View
+          </router-link>
+
+          <!-- Publish -->
           <button
             v-if="listing.status === 'DRAFT'"
-            class="btn-secondary text-xs px-3 py-1.5 flex-1"
+            class="btn-secondary text-xs px-3 py-1.5"
             :disabled="listingStore.submitting"
             @click="handlePublish(listing.id)"
           >
             Publish
           </button>
+
+          <!-- Unpublish -->
           <button
             v-else-if="listing.status === 'ACTIVE'"
-            class="btn-secondary text-xs px-3 py-1.5 flex-1"
+            class="btn-secondary text-xs px-3 py-1.5"
             :disabled="listingStore.submitting"
             @click="handleUnpublish(listing.id)"
           >
             Unpublish
           </button>
 
-          <!-- Edit -->
+          <!-- Mark as Traded (active only) -->
+          <button
+            v-if="listing.status === 'ACTIVE'"
+            class="text-xs px-3 py-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition border border-amber-200 font-medium"
+            :disabled="listingStore.submitting"
+            @click="confirmMarkTraded(listing.id, listing.title)"
+          >
+            Mark Traded
+          </button>
+
+          <!-- Edit (draft or active) -->
           <router-link
+            v-if="['DRAFT', 'ACTIVE'].includes(listing.status)"
             :to="`/my-listings/${listing.id}/edit`"
-            class="btn-secondary text-xs px-3 py-1.5 flex-1 text-center"
+            class="btn-secondary text-xs px-3 py-1.5 text-center"
           >
             Edit
           </router-link>
 
           <!-- Delete -->
           <button
-            class="text-xs px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 transition border border-red-200 flex-1"
+            class="text-xs px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 transition border border-red-200"
             :disabled="listingStore.submitting"
             @click="confirmDelete(listing.id, listing.title)"
           >
@@ -153,7 +247,7 @@
       </div>
     </div>
 
-    <!-- Delete confirmation modal -->
+    <!-- ── Delete confirmation modal ── -->
     <div
       v-if="deleteTarget"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -163,10 +257,13 @@
       <div class="card w-full max-w-sm space-y-4">
         <h2 class="text-lg font-semibold text-surface-800">Delete listing?</h2>
         <p class="text-sm text-surface-600">
-          "<span class="font-medium">{{ deleteTarget.title }}</span>" will be permanently deleted along with all its media.
+          "<span class="font-medium">{{ deleteTarget.title }}</span
+          >" will be permanently deleted along with all its media.
         </p>
         <div class="flex gap-3 justify-end">
-          <button class="btn-secondary text-sm px-4 py-2" @click="deleteTarget = null">Cancel</button>
+          <button class="btn-secondary text-sm px-4 py-2" @click="deleteTarget = null">
+            Cancel
+          </button>
           <button
             class="text-sm px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition disabled:opacity-60"
             :disabled="listingStore.submitting"
@@ -178,6 +275,33 @@
       </div>
     </div>
 
+    <!-- ── Mark as Traded confirmation modal ── -->
+    <div
+      v-if="tradedTarget"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="card w-full max-w-sm space-y-4">
+        <h2 class="text-lg font-semibold text-surface-800">Mark as Traded?</h2>
+        <p class="text-sm text-surface-600">
+          "<span class="font-medium">{{ tradedTarget.title }}</span
+          >" will be moved out of the active marketplace. This cannot be undone easily.
+        </p>
+        <div class="flex gap-3 justify-end">
+          <button class="btn-secondary text-sm px-4 py-2" @click="tradedTarget = null">
+            Cancel
+          </button>
+          <button
+            class="text-sm px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition disabled:opacity-60"
+            :disabled="listingStore.submitting"
+            @click="handleMarkTraded"
+          >
+            {{ listingStore.submitting ? 'Updating…' : 'Yes, mark as traded' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -196,12 +320,7 @@ function firstImage(listing: Listing): string | null {
   return item ? listingService.mediaUrl(item.imageUrl) : null
 }
 
-function firstVideo(listing: Listing): string | null {
-  const item = listing.images.find((m) => m.videoUrl)
-  return item ? listingService.mediaUrl(item.videoUrl) : null
-}
-
-// ── Condition label ───────────────────────────────────────────────────────────
+// ── Labels ────────────────────────────────────────────────────────────────────
 const conditionLabels: Record<string, string> = {
   NEW: 'New',
   LIKE_NEW: 'Like New',
@@ -213,7 +332,6 @@ function conditionLabel(c: string) {
   return conditionLabels[c] ?? c
 }
 
-// ── Status badge colour ───────────────────────────────────────────────────────
 function statusClass(status: string): string {
   const map: Record<string, string> = {
     DRAFT: 'bg-surface-200 text-surface-700',
@@ -229,21 +347,29 @@ function statusClass(status: string): string {
 async function handlePublish(id: string) {
   await listingStore.publish(id)
 }
-
 async function handleUnpublish(id: string) {
   await listingStore.unpublish(id)
 }
 
 // ── Delete ────────────────────────────────────────────────────────────────────
 const deleteTarget = ref<{ id: string; title: string } | null>(null)
-
 function confirmDelete(id: string, title: string) {
   deleteTarget.value = { id, title }
 }
-
 async function handleDelete() {
   if (!deleteTarget.value) return
   await listingStore.remove(deleteTarget.value.id)
   deleteTarget.value = null
+}
+
+// ── Mark as Traded ────────────────────────────────────────────────────────────
+const tradedTarget = ref<{ id: string; title: string } | null>(null)
+function confirmMarkTraded(id: string, title: string) {
+  tradedTarget.value = { id, title }
+}
+async function handleMarkTraded() {
+  if (!tradedTarget.value) return
+  await listingStore.markAsTraded(tradedTarget.value.id)
+  tradedTarget.value = null
 }
 </script>

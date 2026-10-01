@@ -1,17 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useOfferStore } from '@/stores/offer'
 import jbLogo from '@/assets/jb-logo.png'
 const authStore = useAuthStore()
+const offerStore = useOfferStore()
 const router = useRouter()
 
 const userMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
 
+const pendingReceivedCount = computed(
+  () => offerStore.received.filter((o) => o.status === 'PENDING').length,
+)
+
 onMounted(() => {
   authStore.init()
   document.addEventListener('click', handleOutsideClick)
+  // Pre-fetch received offers so the badge count is available immediately
+  if (authStore.isAuthenticated) offerStore.fetchReceived()
 })
 
 onBeforeUnmount(() => {
@@ -77,6 +85,19 @@ function handleLogout() {
                 }"
               >
                 My Listings
+              </router-link>
+              <router-link
+                to="/offers"
+                class="nav-link"
+                :class="{ 'nav-link-active': $route.name === 'offers' }"
+              >
+                My Offers
+                <span
+                  v-if="pendingReceivedCount"
+                  class="ml-1 text-[10px] bg-primary-600 text-white px-1.5 py-0.5 rounded-full font-semibold"
+                >
+                  {{ pendingReceivedCount }}
+                </span>
               </router-link>
             </template>
           </div>
@@ -163,6 +184,33 @@ function handleLogout() {
                       />
                     </svg>
                     My Listings
+                  </router-link>
+                  <router-link
+                    to="/offers"
+                    role="menuitem"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-surface-700 hover:bg-surface-50 transition"
+                    @click="userMenuOpen = false"
+                  >
+                    <svg
+                      class="w-4 h-4 text-surface-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                      />
+                    </svg>
+                    My Offers
+                    <span
+                      v-if="pendingReceivedCount"
+                      class="ml-auto text-[10px] bg-primary-600 text-white px-1.5 py-0.5 rounded-full font-semibold"
+                      >{{ pendingReceivedCount }}</span
+                    >
                   </router-link>
                   <button
                     type="button"
