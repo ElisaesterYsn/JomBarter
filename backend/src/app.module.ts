@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ListingsModule } from './listings/listings.module';
 import { CategoriesModule } from './categories/categories.module';
+import { TradeOffersModule } from './trade-offers/trade-offers.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CategoriesModule } from './categories/categories.module';
     UsersModule,
     ListingsModule,
     CategoriesModule,
+    TradeOffersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

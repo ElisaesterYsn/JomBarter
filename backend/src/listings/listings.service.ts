@@ -33,9 +33,14 @@ export class ListingsService {
         categoryId: dto.categoryId,
         title: dto.title,
         description: dto.description,
+        listingType: dto.listingType ?? 'PHYSICAL_ITEM',
         condition: dto.condition,
+        estimatedValue: dto.estimatedValue ?? null,
         location: dto.location ?? null,
         lookingFor: dto.lookingFor ?? null,
+        tradePreference: dto.tradePreference ?? null,
+        exchangeMethod: dto.exchangeMethod ?? null,
+        interestedInCategories: dto.interestedInCategories ?? null,
         status: 'DRAFT',
       },
     });
@@ -116,8 +121,15 @@ export class ListingsService {
         ...(dto.description !== undefined && { description: dto.description }),
         ...(dto.categoryId !== undefined && { categoryId: dto.categoryId }),
         ...(dto.condition !== undefined && { condition: dto.condition }),
+        ...(dto.listingType !== undefined && { listingType: dto.listingType }),
+        ...(dto.estimatedValue !== undefined && { estimatedValue: dto.estimatedValue }),
         ...(dto.location !== undefined && { location: dto.location }),
         ...(dto.lookingFor !== undefined && { lookingFor: dto.lookingFor }),
+        ...(dto.tradePreference !== undefined && { tradePreference: dto.tradePreference }),
+        ...(dto.exchangeMethod !== undefined && { exchangeMethod: dto.exchangeMethod }),
+        ...(dto.interestedInCategories !== undefined && {
+          interestedInCategories: dto.interestedInCategories,
+        }),
       },
     });
 
@@ -169,6 +181,10 @@ export class ListingsService {
 
   async unpublish(id: string, userId: string) {
     return this.setStatus(id, userId, 'DRAFT');
+  }
+
+  async markAsTraded(id: string, userId: string) {
+    return this.setStatus(id, userId, 'TRADED');
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

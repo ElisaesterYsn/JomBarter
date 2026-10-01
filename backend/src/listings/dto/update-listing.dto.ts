@@ -1,7 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
-import { Transform } from 'class-transformer';
-import { LISTING_CONDITIONS, ListingCondition } from './create-listing.dto';
+import { IsIn, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  LISTING_CONDITIONS,
+  LISTING_TYPES,
+  ListingCondition,
+  ListingType,
+} from './create-listing.dto';
 
 export class UpdateListingDto {
   @ApiPropertyOptional({ example: 'iPhone 13 128GB' })
@@ -31,7 +36,19 @@ export class UpdateListingDto {
   @IsIn(LISTING_CONDITIONS)
   condition?: ListingCondition;
 
-  @ApiPropertyOptional({ example: 'Kota Kinabalu, Sabah' })
+  @ApiPropertyOptional({ enum: LISTING_TYPES })
+  @IsOptional()
+  @IsIn(LISTING_TYPES)
+  listingType?: ListingType;
+
+  @ApiPropertyOptional({ example: 500 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  estimatedValue?: number;
+
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(120)
@@ -44,4 +61,25 @@ export class UpdateListingDto {
   @MaxLength(1000)
   @Transform(({ value }) => (value as string)?.trim() || undefined)
   lookingFor?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  @Transform(({ value }) => (value as string)?.trim() || undefined)
+  tradePreference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  @Transform(({ value }) => (value as string)?.trim() || undefined)
+  exchangeMethod?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  @Transform(({ value }) => (value as string)?.trim() || undefined)
+  interestedInCategories?: string;
 }

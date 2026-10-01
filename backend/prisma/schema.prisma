@@ -28,6 +28,15 @@ datasource db {
 // Listing.condition
 // NEW | LIKE_NEW | GOOD | FAIR | POOR
 
+// Listing.listingType
+// PHYSICAL_ITEM | SERVICE | ITEM_AND_SERVICE
+
+// Listing.tradePreference (comma-separated, multiple allowed)
+// SPECIFIC_ITEM | SIMILAR_VALUE | OPEN_OFFERS | MULTIPLE_ITEMS | ITEM_SERVICE
+
+// Listing.exchangeMethod (comma-separated, multiple allowed)
+// MEETUP | SELF_PICKUP | DELIVERY | SHIPPING | ONLINE
+
 // TradeOffer.status
 // PENDING | ACCEPTED | REJECTED | CANCELLED | EXPIRED
 
@@ -105,10 +114,14 @@ model Listing {
   categoryId     String
   title          String
   description    String
+  listingType    String  @default("PHYSICAL_ITEM") // PHYSICAL_ITEM | SERVICE | ITEM_AND_SERVICE
   condition      String  // NEW | LIKE_NEW | GOOD | FAIR | POOR
   estimatedValue Float?
   location       String?
-  lookingFor     String?  // What the owner wants in exchange (free-text barter description)
+  lookingFor     String?  // Free-text barter description
+  tradePreference String? // Comma-separated: SPECIFIC_ITEM|SIMILAR_VALUE|OPEN_OFFERS|MULTIPLE_ITEMS|ITEM_SERVICE
+  exchangeMethod  String? // Comma-separated: MEETUP|SELF_PICKUP|DELIVERY|SHIPPING|ONLINE
+  interestedInCategories String? // Comma-separated category ids
   status         String  @default("DRAFT") // DRAFT | ACTIVE | TRADED | ARCHIVED | REMOVED
 
   // Relations

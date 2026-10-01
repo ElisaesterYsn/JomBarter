@@ -170,4 +170,15 @@ export class ListingsController {
     const listing = await this.listingsService.unpublish(id, user.id);
     return { message: 'Listing unpublished', listing };
   }
+
+  // ── Authenticated: mark as traded ─────────────────────────────────────────
+
+  @Patch(':id/traded')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark a listing as traded (removes from public feed)' })
+  async markAsTraded(@Param('id') id: string, @CurrentUser() user: JwtUser) {
+    const listing = await this.listingsService.markAsTraded(id, user.id);
+    return { message: 'Listing marked as traded', listing };
+  }
 }
