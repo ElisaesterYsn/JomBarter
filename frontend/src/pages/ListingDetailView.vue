@@ -303,12 +303,34 @@
         >
           Edit listing
         </router-link>
-        <!-- Make an Offer CTA -->
-        <button
-          v-else
-          class="btn-primary text-sm px-5 py-2.5 shrink-0"
-          @click="showOfferModal = true"
+        <!-- Listing is not available for new offers -->
+        <span
+          v-else-if="listing.status !== 'ACTIVE'"
+          class="text-xs text-surface-500 bg-surface-100 border border-surface-200 rounded-lg px-4 py-2.5 shrink-0"
         >
+          No longer available
+        </span>
+        <!-- Already has a pending offer -->
+        <template v-else-if="existingPendingOffer">
+          <div class="flex flex-col items-end gap-1 shrink-0">
+            <span
+              class="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5"
+            >
+              Offer Pending
+            </span>
+            <button
+              class="text-[11px] text-red-600 hover:underline"
+              :disabled="offerStore.processingId === existingPendingOffer.id"
+              @click="cancelPendingOffer"
+            >
+              {{
+                offerStore.processingId === existingPendingOffer.id ? 'Cancelling…' : 'Cancel offer'
+              }}
+            </button>
+          </div>
+        </template>
+        <!-- Make an Offer CTA -->
+        <button v-else class="btn-primary text-sm px-5 py-2.5 shrink-0" @click="openOfferModal">
           Make an Offer
         </button>
       </div>
@@ -323,7 +345,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="offer-modal-title"
-      @click.self="showOfferModal = false"
+      @click.self="closeOfferModal"
     >
       <div class="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
         <!-- Modal header -->
@@ -333,7 +355,7 @@
             type="button"
             class="text-surface-400 hover:text-surface-700 transition"
             aria-label="Close"
-            @click="showOfferModal = false"
+            @click="closeOfferModal"
           >
             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
               <path
@@ -549,10 +571,7 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOfferStore } from '@/stores/offer'
 import { useListingStore } from '@/stores/listing'
-import listingService, {
-  type Listing,
-  parseCommaList,
-} from '@/services/listingService'
+import listingService, { type Listing, parseCommaList } from '@/services/listingService'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -584,16 +603,15 @@ async function load() {
 
 onMounted(() => {
   load()
-  if (authStore.isAuthenticated) loadMyListings()
+  if (authStore.isAuthenticated) {
+    loadMyListings()
+    offerStore.fetchSent() // need sent offers to detect existing pending offer
+  }
 })
 
 // ── Parsed fields ─────────────────────────────────────────────────────────────
-const tradePreferences = computed(() =>
-  parseCommaList(listing.value?.tradePreference),
-)
-const exchangeMethods = computed(() =>
-  parseCommaList(listing.value?.exchangeMethod),
-)
+const tradePreferences = computed(() => parseCommaList(listing.value?.tradePreference))
+const exchangeMethods = computed(() => parseCommaList(listing.value?.exchangeMethod))
 // interestedInCategories: we just show raw ids for now (will map to names when categories store is available)
 const interestedInCats = computed(() => parseCommaList(listing.value?.interestedInCategories))
 
@@ -609,8 +627,33 @@ const offerableListing = computed(() =>
   listingStore.myListings.filter((l) => l.status === 'ACTIVE' && l.id !== id),
 )
 
+/** Check if the current user already has a pending offer on this listing */
+const existingPendingOffer = computed(
+  () => offerStore.sent.find((o) => o.targetListingId === id && o.status === 'PENDING') ?? null,
+)
+
+function openOfferModal() {
+  offerStore.clearError()
+  offerError.value.listing = ''
+  selectedOfferedId.value = null
+  offerMessage.value = ''
+  offerSuccess.value = false
+  showOfferModal.value = true
+}
+
+function closeOfferModal() {
+  if (offerStore.submitting) return // prevent closing while submitting
+  showOfferModal.value = false
+}
+
+async function cancelPendingOffer() {
+  if (!existingPendingOffer.value) return
+  offerStore.clearError()
+  await offerStore.cancelOffer(existingPendingOffer.value.id)
+}
+
 async function loadMyListings() {
-  if (listingStore.myListings.length) return // already loaded
+  if (listingStore.myListings.length) return
   myListingsLoading.value = true
   await listingStore.fetchMyListings()
   myListingsLoading.value = false
@@ -633,6 +676,8 @@ async function sendOffer() {
     setTimeout(() => {
       showOfferModal.value = false
       offerSuccess.value = false
+      selectedOfferedId.value = null
+      offerMessage.value = ''
     }, 2000)
   } catch {
     /* error displayed via offerStore.error */

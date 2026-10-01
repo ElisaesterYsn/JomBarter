@@ -16,6 +16,8 @@ export interface OfferListingSnap {
   id: string
   title: string
   condition: string
+  listingType: string
+  estimatedValue: number | null
   location: string | null
   status: string
   images: ListingMedia[]
@@ -73,19 +75,25 @@ const offerService = {
 
   /** Accept an offer (receiver only) */
   async accept(id: string): Promise<TradeOffer> {
-    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(`/trade-offers/${id}/accept`)
+    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
+      `/trade-offers/${id}/accept`,
+    )
     return res.data.data.offer
   },
 
   /** Reject an offer (receiver only) */
   async reject(id: string): Promise<TradeOffer> {
-    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(`/trade-offers/${id}/reject`)
+    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
+      `/trade-offers/${id}/reject`,
+    )
     return res.data.data.offer
   },
 
   /** Cancel an offer (sender only) */
   async cancel(id: string): Promise<TradeOffer> {
-    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(`/trade-offers/${id}/cancel`)
+    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
+      `/trade-offers/${id}/cancel`,
+    )
     return res.data.data.offer
   },
 }

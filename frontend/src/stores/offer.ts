@@ -6,13 +6,19 @@ export const useOfferStore = defineStore('offer', () => {
   // ── State ──────────────────────────────────────────────────────────────────
   const received = ref<TradeOffer[]>([])
   const sent = ref<TradeOffer[]>([])
+  const loadingReceived = ref(false)
+  const loadingSent = ref(false)
+  /** True while any list fetch is in-flight (union helper) */
   const loading = ref(false)
+  /** Per-offer processing flag — keyed by offer id */
+  const processingId = ref<string | null>(null)
   const submitting = ref(false)
   const error = ref<string | null>(null)
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
   async function fetchReceived() {
+    loadingReceived.value = true
     loading.value = true
     error.value = null
     try {
@@ -20,11 +26,13 @@ export const useOfferStore = defineStore('offer', () => {
     } catch (err: any) {
       error.value = extractMessage(err)
     } finally {
-      loading.value = false
+      loadingReceived.value = false
+      loading.value = loadingSent.value
     }
   }
 
   async function fetchSent() {
+    loadingSent.value = true
     loading.value = true
     error.value = null
     try {
@@ -32,7 +40,8 @@ export const useOfferStore = defineStore('offer', () => {
     } catch (err: any) {
       error.value = extractMessage(err)
     } finally {
-      loading.value = false
+      loadingSent.value = false
+      loading.value = loadingReceived.value
     }
   }
 
@@ -52,7 +61,7 @@ export const useOfferStore = defineStore('offer', () => {
   }
 
   async function acceptOffer(id: string) {
-    submitting.value = true
+    processingId.value = id
     error.value = null
     try {
       const updated = await offerService.accept(id)
@@ -61,12 +70,12 @@ export const useOfferStore = defineStore('offer', () => {
       error.value = extractMessage(err)
       throw err
     } finally {
-      submitting.value = false
+      processingId.value = null
     }
   }
 
   async function rejectOffer(id: string) {
-    submitting.value = true
+    processingId.value = id
     error.value = null
     try {
       const updated = await offerService.reject(id)
@@ -75,12 +84,12 @@ export const useOfferStore = defineStore('offer', () => {
       error.value = extractMessage(err)
       throw err
     } finally {
-      submitting.value = false
+      processingId.value = null
     }
   }
 
   async function cancelOffer(id: string) {
-    submitting.value = true
+    processingId.value = id
     error.value = null
     try {
       const updated = await offerService.cancel(id)
@@ -89,11 +98,13 @@ export const useOfferStore = defineStore('offer', () => {
       error.value = extractMessage(err)
       throw err
     } finally {
-      submitting.value = false
+      processingId.value = null
     }
   }
 
-  function clearError() { error.value = null }
+  function clearError() {
+    error.value = null
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -112,8 +123,20 @@ export const useOfferStore = defineStore('offer', () => {
   }
 
   return {
-    received, sent, loading, submitting, error,
-    fetchReceived, fetchSent, createOffer,
-    acceptOffer, rejectOffer, cancelOffer, clearError,
+    received,
+    sent,
+    loading,
+    loadingReceived,
+    loadingSent,
+    processingId,
+    submitting,
+    error,
+    fetchReceived,
+    fetchSent,
+    createOffer,
+    acceptOffer,
+    rejectOffer,
+    cancelOffer,
+    clearError,
   }
 })
