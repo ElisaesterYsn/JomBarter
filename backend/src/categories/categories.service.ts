@@ -13,7 +13,6 @@ export const SEED_CATEGORIES = [
   { name: 'Books', slug: 'books' },
   { name: 'Sports & Fitness', slug: 'sports-fitness' },
   { name: 'Hobbies & Collectibles', slug: 'hobbies-collectibles' },
-  { name: 'Services', slug: 'services' },
   { name: 'Other', slug: 'other' },
 ] as const;
 

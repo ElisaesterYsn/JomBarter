@@ -66,35 +66,11 @@
             </h2>
 
             <!-- Listing Type -->
-            <div class="mb-5">
-              <label class="form-label">What are you offering?</label>
-              <div class="grid grid-cols-3 gap-2">
-                <label
-                  v-for="opt in listingTypeOptions"
-                  :key="opt.value"
-                  class="flex flex-col items-center justify-center gap-1 cursor-pointer rounded-lg border-2 py-3 px-2 text-xs font-medium text-center transition"
-                  :class="
-                    form.listingType === opt.value
-                      ? 'border-primary-600 bg-primary-50 text-primary-700'
-                      : 'border-surface-200 text-surface-600 hover:border-primary-400'
-                  "
-                >
-                  <input
-                    type="radio"
-                    :value="opt.value"
-                    v-model="form.listingType"
-                    class="sr-only"
-                  />
-                  <span class="text-lg" aria-hidden="true">{{ opt.emoji }}</span
-                  >{{ opt.label }}
-                </label>
-              </div>
-            </div>
 
             <!-- Title -->
             <div class="mb-5">
               <label for="title" class="form-label"
-                >Product title <span class="text-red-500" aria-hidden="true">*</span></label
+                >Product Name <span class="text-red-500" aria-hidden="true">*</span></label
               >
               <input
                 id="title"
@@ -497,7 +473,6 @@ import { useListingStore } from '@/stores/listing'
 import listingService, {
   type Category,
   type ListingCondition,
-  type ListingType,
   parseCommaList,
   serializeCommaList,
 } from '@/services/listingService'
@@ -508,11 +483,6 @@ const listingStore = useListingStore()
 const id = route.params.id as string
 
 // ── Options ───────────────────────────────────────────────────────────────────
-const listingTypeOptions = [
-  { value: 'PHYSICAL_ITEM', label: 'Physical Item', emoji: '📦' },
-  { value: 'SERVICE', label: 'Service', emoji: '🛠️' },
-  { value: 'ITEM_AND_SERVICE', label: 'Item + Service', emoji: '🤝' },
-]
 const conditionOptions = [
   { value: 'NEW', label: 'New', emoji: '✨' },
   { value: 'LIKE_NEW', label: 'Like New', emoji: '🌟' },
@@ -525,7 +495,6 @@ const tradePreferenceOptions = [
   { value: 'SIMILAR_VALUE', label: 'Similar value items' },
   { value: 'OPEN_OFFERS', label: 'Open to offers' },
   { value: 'MULTIPLE_ITEMS', label: 'Multiple items for one' },
-  { value: 'ITEM_SERVICE', label: 'Item + service' },
 ]
 const exchangeMethodOptions = [
   { value: 'MEETUP', label: 'Meet-up', emoji: '🤝' },
@@ -557,7 +526,6 @@ const form = reactive({
   description: '',
   categoryId: '',
   condition: '' as ListingCondition | '',
-  listingType: 'PHYSICAL_ITEM' as ListingType,
   estimatedValue: null as number | null,
   location: '',
   lookingFor: '',
@@ -584,7 +552,6 @@ watch(
     form.description = listing.description
     form.categoryId = listing.categoryId
     form.condition = listing.condition
-    form.listingType = listing.listingType
     form.estimatedValue = listing.estimatedValue
     form.location = listing.location ?? ''
     const lf = listing.lookingFor ?? ''
@@ -718,7 +685,6 @@ async function handleSubmit() {
         description: form.description,
         categoryId: form.categoryId,
         condition: form.condition as ListingCondition,
-        listingType: form.listingType,
         estimatedValue: form.estimatedValue ?? undefined,
         location: form.location || undefined,
         lookingFor: form.lookingFor || undefined,

@@ -4,10 +4,9 @@ import apiService from './apiService'
 
 export type ListingCondition = 'NEW' | 'LIKE_NEW' | 'GOOD' | 'FAIR' | 'POOR'
 export type ListingStatus = 'DRAFT' | 'ACTIVE' | 'TRADED' | 'ARCHIVED' | 'REMOVED'
-export type ListingType = 'PHYSICAL_ITEM' | 'SERVICE' | 'ITEM_AND_SERVICE'
+export type ListingType = 'PHYSICAL_ITEM'
 
-export type TradePreference =
-  'SPECIFIC_ITEM' | 'SIMILAR_VALUE' | 'OPEN_OFFERS' | 'MULTIPLE_ITEMS' | 'ITEM_SERVICE'
+export type TradePreference = 'SPECIFIC_ITEM' | 'SIMILAR_VALUE' | 'OPEN_OFFERS' | 'MULTIPLE_ITEMS'
 
 export type ExchangeMethod = 'MEETUP' | 'SELF_PICKUP' | 'DELIVERY' | 'SHIPPING' | 'ONLINE'
 

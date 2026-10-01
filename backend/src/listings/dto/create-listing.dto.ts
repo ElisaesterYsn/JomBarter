@@ -7,7 +7,7 @@ import { Transform, Type } from 'class-transformer';
 export const LISTING_CONDITIONS = ['NEW', 'LIKE_NEW', 'GOOD', 'FAIR', 'POOR'] as const;
 export type ListingCondition = (typeof LISTING_CONDITIONS)[number];
 
-export const LISTING_TYPES = ['PHYSICAL_ITEM', 'SERVICE', 'ITEM_AND_SERVICE'] as const;
+export const LISTING_TYPES = ['PHYSICAL_ITEM'] as const;
 export type ListingType = (typeof LISTING_TYPES)[number];
 
 export const TRADE_PREFERENCES = [
@@ -15,7 +15,6 @@ export const TRADE_PREFERENCES = [
   'SIMILAR_VALUE',
   'OPEN_OFFERS',
   'MULTIPLE_ITEMS',
-  'ITEM_SERVICE',
 ] as const;
 export type TradePreference = (typeof TRADE_PREFERENCES)[number];
 

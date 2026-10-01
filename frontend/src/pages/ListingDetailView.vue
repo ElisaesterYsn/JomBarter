@@ -165,12 +165,6 @@
         <!-- Meta chips row -->
         <div class="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <span
-            class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 px-2.5 py-1 rounded-full font-medium"
-          >
-            <span aria-hidden="true">{{ listingTypeEmoji(listing.listingType) }}</span>
-            {{ listingTypeLabel(listing.listingType) }}
-          </span>
-          <span
             v-if="listing.category"
             class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 px-2.5 py-1 rounded-full font-medium"
           >
@@ -718,29 +712,11 @@ function conditionClass(c: string) {
   )
 }
 
-const listingTypeLabels: Record<string, string> = {
-  PHYSICAL_ITEM: 'Physical Item',
-  SERVICE: 'Service',
-  ITEM_AND_SERVICE: 'Item + Service',
-}
-const listingTypeEmojis: Record<string, string> = {
-  PHYSICAL_ITEM: '📦',
-  SERVICE: '🛠️',
-  ITEM_AND_SERVICE: '🤝',
-}
-function listingTypeLabel(t: string) {
-  return listingTypeLabels[t] ?? t
-}
-function listingTypeEmoji(t: string) {
-  return listingTypeEmojis[t] ?? '📦'
-}
-
 const tradePrefLabels: Record<string, string> = {
   SPECIFIC_ITEM: 'Specific item only',
   SIMILAR_VALUE: 'Similar value items',
   OPEN_OFFERS: 'Open to offers',
   MULTIPLE_ITEMS: 'Multiple items for one',
-  ITEM_SERVICE: 'Item + service',
 }
 function tradePrefLabel(p: string) {
   return tradePrefLabels[p] ?? p
