@@ -27,6 +27,13 @@ export interface ListingMedia {
   createdAt: string
 }
 
+export interface ListingOwner {
+  id: string
+  displayName: string
+  username: string
+  profileImage?: string | null
+}
+
 export interface Listing {
   id: string
   userId: string
@@ -47,17 +54,14 @@ export interface Listing {
   interestedInCategories: string | null
   status: ListingStatus
   images: ListingMedia[]
+  /** Populated on getOne() and public feed responses */
+  user?: ListingOwner
   createdAt: string
   updatedAt: string
 }
 
 export interface FeedListing extends Listing {
-  user: {
-    id: string
-    displayName: string
-    username: string
-    profileImage: string | null
-  }
+  user: ListingOwner
 }
 
 export interface FeedResponse {
@@ -166,6 +170,18 @@ const listingService = {
   async getOne(id: string): Promise<Listing> {
     const res = await apiService.get<{ data: { listing: Listing } }>(`/listings/${id}`)
     return res.data.data.listing
+  },
+
+  /** Fetch related listings from the same category, excluding the current one */
+  async getRelatedListings(
+    categoryId: string,
+    excludeId: string,
+    limit = 4,
+  ): Promise<FeedListing[]> {
+    const res = await apiService.get<{ data: FeedResponse }>(
+      `/listings?categoryId=${categoryId}&excludeId=${excludeId}&limit=${limit}`,
+    )
+    return res.data.data.listings
   },
 
   async update(id: string, payload: UpdateListingPayload, images: File[] = []): Promise<Listing> {

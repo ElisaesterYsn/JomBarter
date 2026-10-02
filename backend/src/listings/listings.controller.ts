@@ -57,11 +57,20 @@ export class ListingsController {
   @ApiOperation({ summary: 'Browse all active listings (public feed)' })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'categoryId', required: false, type: String })
+  @ApiQuery({ name: 'excludeId', required: false, type: String })
   async getPublicFeed(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(12), ParseIntPipe) limit: number,
+    @Query('categoryId') categoryId?: string,
+    @Query('excludeId') excludeId?: string,
   ) {
-    return this.listingsService.findPublicFeed(page, Math.min(limit, 50));
+    return this.listingsService.findPublicFeed(
+      page,
+      Math.min(limit, 50),
+      categoryId || undefined,
+      excludeId || undefined,
+    );
   }
 
   // ── Authenticated: my listings ────────────────────────────────────────────

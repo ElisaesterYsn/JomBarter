@@ -34,16 +34,64 @@
     </div>
 
     <!-- ── Error ── -->
-    <div v-else-if="error" class="card text-center py-12">
-      <p class="text-surface-600 mb-4">{{ error }}</p>
-      <button class="btn-secondary px-5 py-2 text-sm" @click="load">Try again</button>
+    <div v-else-if="error" class="card text-center py-14">
+      <div
+        class="w-14 h-14 bg-surface-100 rounded-full flex items-center justify-center mx-auto mb-4"
+      >
+        <svg
+          class="w-7 h-7 text-surface-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      </div>
+      <h2 class="text-base font-semibold text-surface-800 mb-1">Listing not found</h2>
+      <p class="text-sm text-surface-500 mb-5">
+        This listing may have been removed or the link is invalid.
+      </p>
+      <div class="flex gap-3 justify-center">
+        <button class="btn-secondary px-4 py-2 text-sm" @click="$router.back()">← Go back</button>
+        <router-link to="/" class="btn-primary px-4 py-2 text-sm">Browse listings</router-link>
+      </div>
     </div>
 
     <!-- ── Main content ── -->
     <template v-else-if="listing">
+      <!-- ── TRADED / UNAVAILABLE banner (full width, above grid) ── -->
+      <div
+        v-if="listing.status === 'TRADED'"
+        class="mb-5 rounded-2xl bg-primary-50 border border-primary-200 px-5 py-4 flex items-center gap-3"
+        role="status"
+      >
+        <span
+          class="text-xs font-bold uppercase tracking-widest bg-primary-600 text-white px-2.5 py-1 rounded-full shrink-0"
+          >Traded</span
+        >
+        <p class="text-sm text-primary-800">This item is no longer available for barter.</p>
+      </div>
+      <div
+        v-else-if="['ARCHIVED', 'REMOVED'].includes(listing.status)"
+        class="mb-5 rounded-2xl bg-surface-100 border border-surface-200 px-5 py-4 flex items-center gap-3"
+        role="status"
+      >
+        <span
+          class="text-xs font-bold uppercase tracking-widest bg-surface-500 text-white px-2.5 py-1 rounded-full shrink-0"
+          >{{ listing.status === 'ARCHIVED' ? 'Archived' : 'Removed' }}</span
+        >
+        <p class="text-sm text-surface-600">This listing is no longer active.</p>
+      </div>
+
       <!-- Two-column on desktop, single column on mobile -->
-      <div class="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
-        <!-- ══ LEFT COLUMN: Gallery ══════════════════════════════════════════ -->
+      <div class="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+        <!-- ══ LEFT COLUMN: Gallery ════════════════════════════════════════ -->
         <div class="space-y-3">
           <!-- Main image / placeholder -->
           <div
@@ -59,7 +107,6 @@
               />
             </template>
             <template v-else>
-              <!-- No photo placeholder -->
               <div
                 class="w-full h-full flex flex-col items-center justify-center text-surface-300 gap-2"
               >
@@ -82,7 +129,7 @@
             </template>
           </div>
 
-          <!-- Thumbnail strip (only when >1 image) -->
+          <!-- Thumbnail strip -->
           <div
             v-if="listing.images.length > 1"
             class="flex gap-2 overflow-x-auto pb-1"
@@ -125,7 +172,6 @@
             </button>
           </div>
 
-          <!-- Photo count hint -->
           <p v-if="listing.images.length > 1" class="text-xs text-surface-400 text-center">
             Photo {{ mediaIndex + 1 }} of {{ listing.images.length }}
             <span
@@ -136,27 +182,24 @@
           </p>
         </div>
 
-        <!-- ══ RIGHT COLUMN: All listing info ════════════════════════════════ -->
-        <div class="space-y-4">
-          <!-- ── Header card: title, condition, location, date ── -->
+        <!-- ══ RIGHT COLUMN: Header → CTA → Owner (sticky context) ══════════ -->
+        <div class="space-y-4 lg:sticky lg:top-24">
+          <!-- ── Title / condition / badges ── -->
           <div class="card">
-            <!-- Condition + status row -->
+            <!-- Badges row -->
             <div class="flex items-center gap-2 mb-3 flex-wrap">
-              <!-- Listing type badge -->
               <span
                 class="inline-flex items-center gap-1 text-xs font-medium bg-surface-100 text-surface-600 px-2.5 py-1 rounded-full border border-surface-200"
               >
                 <span aria-hidden="true">{{ listingTypeEmoji(listing.listingType) }}</span>
                 {{ listingTypeLabel(listing.listingType) }}
               </span>
-              <!-- Condition -->
               <span
                 class="text-xs font-bold px-2.5 py-1 rounded-full"
                 :class="conditionClass(listing.condition)"
               >
                 {{ conditionLabel(listing.condition) }}
               </span>
-              <!-- Status (only when not ACTIVE) -->
               <span
                 v-if="listing.status !== 'ACTIVE'"
                 class="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -174,7 +217,6 @@
                       : listing.status
                 }}
               </span>
-              <!-- Category -->
               <span
                 v-if="listing.category"
                 class="text-xs bg-surface-100 text-surface-600 px-2.5 py-1 rounded-full font-medium"
@@ -189,7 +231,7 @@
             </h1>
 
             <!-- Location + date -->
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-surface-500">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-surface-500 mb-3">
               <span v-if="listing.location" class="flex items-center gap-1">
                 <svg
                   class="w-4 h-4 shrink-0 text-surface-400"
@@ -228,7 +270,7 @@
             </div>
 
             <!-- Estimated value -->
-            <div v-if="listing.estimatedValue" class="mt-3">
+            <div v-if="listing.estimatedValue">
               <div
                 class="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold px-3 py-1.5 rounded-xl"
               >
@@ -252,177 +294,83 @@
             </div>
           </div>
 
-          <!-- ── Description ── -->
+          <!-- ── CTA card ── -->
           <div class="card">
-            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
-              About This Listing
-            </h2>
-            <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
-              {{ listing.description }}
-            </p>
-          </div>
-
-          <!-- ── What they want (most important barter field) ── -->
-          <div v-if="listing.lookingFor" class="card border-primary-200 bg-primary-50">
-            <h2
-              class="text-xs font-bold text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-1.5"
-            >
-              <svg
-                class="w-3.5 h-3.5 shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2.5"
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                />
-              </svg>
-              Looking to Trade For
-            </h2>
-            <p class="text-base text-primary-900 leading-relaxed font-semibold">
-              {{ listing.lookingFor }}
-            </p>
-          </div>
-
-          <!-- ── Trade preferences + Exchange methods ── -->
-          <div v-if="tradePreferences.length || exchangeMethods.length" class="card space-y-4">
-            <div v-if="tradePreferences.length">
-              <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
-                Trade preferences
-              </h2>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="p in tradePreferences"
-                  :key="p"
-                  class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
-                >
-                  <svg
-                    class="w-3 h-3 text-primary-600"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fill-rule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clip-rule="evenodd"
-                    />
-                  </svg>
-                  {{ tradePrefLabel(p) }}
-                </span>
-              </div>
-            </div>
-            <div v-if="exchangeMethods.length">
-              <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
-                Exchange method
-              </h2>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="m in exchangeMethods"
-                  :key="m"
-                  class="inline-flex items-center gap-1.5 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
-                >
-                  {{ exchangeMethodEmoji(m) }} {{ exchangeMethodLabel(m) }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- ── Interested categories ── -->
-          <div v-if="resolvedInterestedCats.length" class="card">
-            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-2">
-              Interested in
-            </h2>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="cat in resolvedInterestedCats"
-                :key="cat"
-                class="inline-flex items-center bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
-              >
-                📂 {{ cat }}
-              </span>
-            </div>
-          </div>
-
-          <!-- ── Owner card + CTA ── -->
-          <div class="card">
-            <!-- Owner row -->
-            <div class="flex items-center gap-3 mb-4 pb-4 border-b border-surface-100">
-              <div
-                class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold uppercase shrink-0"
-                aria-hidden="true"
-              >
-                {{ listing.user?.displayName?.charAt(0) ?? '?' }}
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold text-surface-800 truncate">
-                  {{ listing.user?.displayName }}
-                </p>
-                <p class="text-xs text-surface-400">Listed {{ relativeTime(listing.createdAt) }}</p>
-              </div>
-            </div>
-
-            <!-- CTA -->
             <!-- Guest -->
             <router-link
               v-if="!authStore.isAuthenticated"
               to="/register"
-              class="btn-primary w-full py-3 text-sm text-center"
+              class="btn-primary w-full py-3 text-sm text-center block"
             >
-              Sign up to make an offer
+              Sign in to make an offer
             </router-link>
 
             <!-- Own listing -->
-            <router-link
-              v-else-if="authStore.user?.id === listing.userId"
-              :to="`/my-listings/${listing.id}/edit`"
-              class="btn-secondary w-full py-3 text-sm text-center"
-            >
-              Edit your listing
-            </router-link>
+            <div v-else-if="authStore.user?.id === listing.userId" class="text-center">
+              <p class="text-xs font-semibold text-surface-500 uppercase tracking-widest mb-2">
+                This is your listing
+              </p>
+              <router-link
+                :to="`/my-listings/${listing.id}/edit`"
+                class="btn-secondary w-full py-2.5 text-sm text-center block"
+              >
+                Edit listing
+              </router-link>
+            </div>
 
             <!-- Not available -->
             <div
               v-else-if="listing.status !== 'ACTIVE'"
-              class="text-center py-3 text-sm text-surface-500 bg-surface-100 rounded-xl border border-surface-200"
+              class="text-center py-3 px-4 bg-surface-100 rounded-xl border border-surface-200"
             >
-              This listing is no longer available
+              <p class="text-xs font-semibold text-surface-500 uppercase tracking-widest mb-1">
+                Not Available
+              </p>
+              <p class="text-sm text-surface-500">
+                This listing is no longer available for barter.
+              </p>
             </div>
 
             <!-- Pending offer exists -->
-            <template v-else-if="existingPendingOffer">
-              <div
-                class="text-center bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2"
-              >
-                <p class="text-sm font-semibold text-amber-800">
-                  You have a pending offer on this listing
-                </p>
+            <div
+              v-else-if="existingPendingOffer"
+              class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-center space-y-2"
+            >
+              <p class="text-xs font-bold text-amber-700 uppercase tracking-widest">
+                Offer Pending
+              </p>
+              <p class="text-sm text-amber-800">
+                You already have an active offer on this listing.
+              </p>
+              <div class="flex gap-2 justify-center pt-1">
+                <router-link
+                  to="/offers"
+                  class="text-xs font-semibold text-primary-700 border border-primary-300 bg-white rounded-lg px-3 py-1.5 hover:bg-primary-50 transition"
+                >
+                  View Offer
+                </router-link>
                 <button
-                  class="text-xs text-red-600 hover:underline disabled:opacity-50"
+                  class="text-xs font-semibold text-red-600 border border-red-200 bg-white rounded-lg px-3 py-1.5 hover:bg-red-50 transition disabled:opacity-50"
                   :disabled="offerStore.processingId === existingPendingOffer.id"
                   @click="cancelPendingOffer"
                 >
                   {{
                     offerStore.processingId === existingPendingOffer.id
                       ? 'Cancelling…'
-                      : 'Cancel my offer'
+                      : 'Cancel Offer'
                   }}
                 </button>
               </div>
-            </template>
+            </div>
 
             <!-- Make an Offer -->
             <button
               v-else
-              class="btn-primary w-full py-3 text-sm flex items-center justify-center gap-2"
+              class="btn-primary w-full py-3 text-base font-semibold flex items-center justify-center gap-2"
               @click="openOfferModal"
             >
               <svg
-                class="w-4 h-4"
+                class="w-5 h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -438,10 +386,225 @@
               Make an Offer
             </button>
           </div>
+
+          <!-- ── Listed by ── -->
+          <div class="card">
+            <h2 class="text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">
+              Listed By
+            </h2>
+            <div class="flex items-center gap-3">
+              <div
+                class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold uppercase shrink-0"
+                aria-hidden="true"
+              >
+                {{ listing.user?.displayName?.charAt(0) ?? '?' }}
+              </div>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-surface-800 truncate">
+                  {{ listing.user?.displayName }}
+                </p>
+                <p v-if="listing.user?.username" class="text-xs text-surface-400 truncate">
+                  @{{ listing.user.username }}
+                </p>
+                <p
+                  v-if="listing.location"
+                  class="text-xs text-surface-400 flex items-center gap-0.5 mt-0.5"
+                >
+                  <svg
+                    class="w-3 h-3 shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  {{ listing.location }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
         <!-- end right column -->
       </div>
       <!-- end grid -->
+
+      <!-- ══ FULL-WIDTH DETAIL SECTIONS (below grid) ══════════════════════ -->
+      <div class="mt-6 space-y-4 max-w-2xl lg:max-w-none">
+        <!-- About this listing -->
+        <div class="card">
+          <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+            About This Listing
+          </h2>
+          <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
+            {{ listing.description }}
+          </p>
+        </div>
+
+        <!-- Looking to trade for -->
+        <div v-if="listing.lookingFor" class="card border-primary-200 bg-primary-50">
+          <h2
+            class="text-xs font-bold text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-1.5"
+          >
+            <svg
+              class="w-3.5 h-3.5 shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2.5"
+                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+              />
+            </svg>
+            Looking to Trade For
+          </h2>
+          <p class="text-base text-primary-900 leading-relaxed font-semibold">
+            {{ listing.lookingFor }}
+          </p>
+        </div>
+
+        <!-- Trade preferences -->
+        <div v-if="tradePreferences.length" class="card">
+          <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+            Trade Preferences
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="p in tradePreferences"
+              :key="p"
+              class="inline-flex items-center gap-1 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+            >
+              <svg
+                class="w-3 h-3 text-primary-600"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+              {{ tradePrefLabel(p) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Exchange methods -->
+        <div v-if="exchangeMethods.length" class="card">
+          <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+            Exchange Method
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="m in exchangeMethods"
+              :key="m"
+              class="inline-flex items-center gap-1.5 bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+            >
+              {{ exchangeMethodEmoji(m) }} {{ exchangeMethodLabel(m) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Interested categories -->
+        <div v-if="resolvedInterestedCats.length" class="card">
+          <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+            Interested In
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="cat in resolvedInterestedCats"
+              :key="cat"
+              class="inline-flex items-center bg-surface-100 text-surface-700 text-xs px-2.5 py-1.5 rounded-full border border-surface-200"
+            >
+              📂 {{ cat }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ RELATED LISTINGS ══════════════════════════════════════════════ -->
+      <div v-if="relatedLoading || relatedListings.length" class="mt-8">
+        <h2 class="text-lg font-bold text-surface-800 mb-4">More from this category</h2>
+
+        <!-- Skeleton -->
+        <div v-if="relatedLoading" class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div
+            v-for="n in 4"
+            :key="n"
+            class="rounded-2xl border border-surface-200 bg-white overflow-hidden animate-pulse"
+          >
+            <div class="aspect-[4/3] bg-surface-200"></div>
+            <div class="p-3 space-y-2">
+              <div class="h-3 bg-surface-200 rounded w-3/4"></div>
+              <div class="h-3 bg-surface-200 rounded w-1/2"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Related cards -->
+        <div v-else class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <router-link
+            v-for="item in relatedListings"
+            :key="item.id"
+            :to="`/listings/${item.id}`"
+            class="group rounded-2xl border border-surface-200 bg-white overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
+            :aria-label="`View ${item.title}`"
+          >
+            <div class="aspect-[4/3] bg-surface-100 overflow-hidden">
+              <img
+                v-if="firstImage(item)"
+                :src="firstImage(item)!"
+                :alt="item.title"
+                class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+                loading="lazy"
+              />
+              <div v-else class="w-full h-full flex items-center justify-center text-surface-300">
+                <svg
+                  class="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div class="p-3 flex-1">
+              <p class="text-xs font-semibold text-surface-800 line-clamp-2 leading-snug mb-1.5">
+                {{ item.title }}
+              </p>
+              <div class="flex items-center justify-between gap-1">
+                <span
+                  class="text-[11px] px-2 py-0.5 rounded-full font-medium"
+                  :class="conditionClass(item.condition)"
+                >
+                  {{ conditionLabel(item.condition) }}
+                </span>
+                <span v-if="item.location" class="text-[11px] text-surface-400 truncate ml-1">{{
+                  item.location
+                }}</span>
+              </div>
+            </div>
+          </router-link>
+        </div>
+      </div>
     </template>
 
     <!-- ══════════════════════════════════════════════════════════════════
@@ -741,6 +904,7 @@ import { useOfferStore } from '@/stores/offer'
 import { useListingStore } from '@/stores/listing'
 import listingService, {
   type Listing,
+  type FeedListing,
   type Category,
   parseCommaList,
 } from '@/services/listingService'
@@ -752,9 +916,7 @@ const listingStore = useListingStore()
 const id = route.params.id as string
 
 // ── Listing data ──────────────────────────────────────────────────────────────
-const listing = ref<
-  (Listing & { user?: { id: string; displayName: string; username: string } }) | null
->(null)
+const listing = ref<Listing | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const mediaIndex = ref(0)
@@ -765,8 +927,13 @@ async function load() {
   loading.value = true
   error.value = null
   mediaIndex.value = 0
+  relatedListings.value = []
   try {
-    listing.value = (await listingService.getOne(id)) as any
+    listing.value = await listingService.getOne(id)
+    // Load related listings after main listing loads (non-blocking)
+    if (listing.value?.categoryId) {
+      loadRelated(listing.value.categoryId)
+    }
   } catch {
     error.value = 'Could not load this listing.'
   } finally {
@@ -782,6 +949,21 @@ async function loadCategories() {
     allCategories.value = await listingService.getCategories()
   } catch {
     /* non-fatal */
+  }
+}
+
+// ── Related listings ──────────────────────────────────────────────────────────
+const relatedListings = ref<FeedListing[]>([])
+const relatedLoading = ref(false)
+
+async function loadRelated(categoryId: string) {
+  relatedLoading.value = true
+  try {
+    relatedListings.value = await listingService.getRelatedListings(categoryId, id, 4)
+  } catch {
+    /* non-fatal — section simply won't render */
+  } finally {
+    relatedLoading.value = false
   }
 }
 
