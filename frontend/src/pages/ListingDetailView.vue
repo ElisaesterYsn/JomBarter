@@ -356,8 +356,8 @@
                 >
                   {{
                     offerStore.processingId === existingPendingOffer.id
-                      ? 'Cancelling…'
-                      : 'Cancel Offer'
+                      ? 'Withdrawing…'
+                      : 'Withdraw Offer'
                   }}
                 </button>
               </div>
@@ -1022,7 +1022,7 @@ function closeOfferModal() {
 async function cancelPendingOffer() {
   if (!existingPendingOffer.value) return
   offerStore.clearError()
-  await offerStore.cancelOffer(existingPendingOffer.value.id)
+  await offerStore.withdrawOffer(existingPendingOffer.value.id)
 }
 
 async function loadMyListings() {

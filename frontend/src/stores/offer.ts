@@ -8,11 +8,9 @@ export const useOfferStore = defineStore('offer', () => {
   const sent = ref<TradeOffer[]>([])
   const loadingReceived = ref(false)
   const loadingSent = ref(false)
-  /** True while any list fetch is in-flight (union helper) */
-  const loading = ref(false)
-  /** Per-offer processing flag — keyed by offer id */
-  const processingId = ref<string | null>(null)
-  const submitting = ref(false)
+  const loading = ref(false) // union helper used by App.vue badge
+  const processingId = ref<string | null>(null) // per-offer spinner
+  const submitting = ref(false) // for new offer creation
   const error = ref<string | null>(null)
 
   // ── Actions ────────────────────────────────────────────────────────────────
@@ -64,8 +62,7 @@ export const useOfferStore = defineStore('offer', () => {
     processingId.value = id
     error.value = null
     try {
-      const updated = await offerService.accept(id)
-      syncOffer(updated)
+      syncOffer(await offerService.accept(id))
     } catch (err: any) {
       error.value = extractMessage(err)
       throw err
@@ -74,12 +71,11 @@ export const useOfferStore = defineStore('offer', () => {
     }
   }
 
-  async function rejectOffer(id: string) {
+  async function declineOffer(id: string) {
     processingId.value = id
     error.value = null
     try {
-      const updated = await offerService.reject(id)
-      syncOffer(updated)
+      syncOffer(await offerService.decline(id))
     } catch (err: any) {
       error.value = extractMessage(err)
       throw err
@@ -88,12 +84,24 @@ export const useOfferStore = defineStore('offer', () => {
     }
   }
 
-  async function cancelOffer(id: string) {
+  async function withdrawOffer(id: string) {
     processingId.value = id
     error.value = null
     try {
-      const updated = await offerService.cancel(id)
-      syncOffer(updated)
+      syncOffer(await offerService.withdraw(id))
+    } catch (err: any) {
+      error.value = extractMessage(err)
+      throw err
+    } finally {
+      processingId.value = null
+    }
+  }
+
+  async function completeOffer(id: string) {
+    processingId.value = id
+    error.value = null
+    try {
+      syncOffer(await offerService.complete(id))
     } catch (err: any) {
       error.value = extractMessage(err)
       throw err
@@ -135,8 +143,9 @@ export const useOfferStore = defineStore('offer', () => {
     fetchSent,
     createOffer,
     acceptOffer,
-    rejectOffer,
-    cancelOffer,
+    declineOffer,
+    withdrawOffer,
+    completeOffer,
     clearError,
   }
 })

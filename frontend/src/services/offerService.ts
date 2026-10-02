@@ -1,9 +1,12 @@
 import apiService from './apiService'
-import type { Listing, ListingMedia } from './listingService'
+import type { ListingMedia } from './listingService'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Status types ──────────────────────────────────────────────────────────────
 
-export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'EXPIRED'
+export type OfferStatus =
+  'PENDING' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN' | 'COMPLETED' | 'EXPIRED'
+
+// ── Entity types ──────────────────────────────────────────────────────────────
 
 export interface OfferUser {
   id: string
@@ -73,7 +76,7 @@ const offerService = {
     return res.data.data.offers
   },
 
-  /** Accept an offer (receiver only) */
+  /** PENDING → ACCEPTED  (receiver only) */
   async accept(id: string): Promise<TradeOffer> {
     const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
       `/trade-offers/${id}/accept`,
@@ -81,18 +84,26 @@ const offerService = {
     return res.data.data.offer
   },
 
-  /** Reject an offer (receiver only) */
-  async reject(id: string): Promise<TradeOffer> {
+  /** PENDING → DECLINED  (receiver only) */
+  async decline(id: string): Promise<TradeOffer> {
     const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
-      `/trade-offers/${id}/reject`,
+      `/trade-offers/${id}/decline`,
     )
     return res.data.data.offer
   },
 
-  /** Cancel an offer (sender only) */
-  async cancel(id: string): Promise<TradeOffer> {
+  /** PENDING → WITHDRAWN  (sender only) */
+  async withdraw(id: string): Promise<TradeOffer> {
     const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
-      `/trade-offers/${id}/cancel`,
+      `/trade-offers/${id}/withdraw`,
+    )
+    return res.data.data.offer
+  },
+
+  /** ACCEPTED → COMPLETED  (either participant) */
+  async complete(id: string): Promise<TradeOffer> {
+    const res = await apiService.patch<{ data: { offer: TradeOffer } }>(
+      `/trade-offers/${id}/complete`,
     )
     return res.data.data.offer
   },

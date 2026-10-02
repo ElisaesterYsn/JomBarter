@@ -38,7 +38,8 @@ datasource db {
 // MEETUP | SELF_PICKUP | DELIVERY | SHIPPING | ONLINE
 
 // TradeOffer.status
-// PENDING | ACCEPTED | REJECTED | CANCELLED | EXPIRED
+// PENDING | ACCEPTED | DECLINED | WITHDRAWN | COMPLETED | EXPIRED
+// Transitions: PENDING→ACCEPTED, PENDING→DECLINED, PENDING→WITHDRAWN, ACCEPTED→COMPLETED
 
 // Trade.status
 // ACTIVE | COMPLETED | CANCELLED
@@ -164,7 +165,7 @@ model TradeOffer {
   receiverId      String
   targetListingId String
   message         String?
-  status          String   @default("PENDING") // PENDING | ACCEPTED | REJECTED | CANCELLED | EXPIRED
+  status          String   @default("PENDING") // PENDING | ACCEPTED | DECLINED | WITHDRAWN | COMPLETED | EXPIRED
   expiresAt       DateTime?
   respondedAt     DateTime?
 

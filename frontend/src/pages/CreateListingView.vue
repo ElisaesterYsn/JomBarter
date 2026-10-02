@@ -50,11 +50,12 @@
 
     <div class="card space-y-6">
       <form novalidate @submit.prevent="handleSubmit">
-        <!-- ══ WHAT I HAVE ══════════════════════════════════════════════════ -->
-        <div class="pb-5 border-b border-surface-100">
-          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
-            What I'm Offering
-          </h2>
+        <!-- ══ SECTION 1 — BASIC INFORMATION ════════════════════════════════ -->
+        <div class="pb-6 border-b border-surface-100">
+          <div class="mb-5">
+            <h2 class="text-base font-bold text-surface-800">Basic Information</h2>
+            <p class="text-sm text-surface-500 mt-0.5">Tell others what you're offering.</p>
+          </div>
 
           <!-- Title -->
           <div class="mb-5">
@@ -157,7 +158,14 @@
             </div>
           </div>
 
-          <!-- Estimated Value + Location row -->
+          <!-- Estimated Value + Location row — Item Details -->
+          <p class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-3 mt-1">
+            Item Details
+          </p>
+          <p class="text-xs text-surface-400 mb-3">
+            Help other traders understand the condition and approximate value. The estimated value
+            is a guide, not a selling price.
+          </p>
           <div class="grid sm:grid-cols-2 gap-4 mb-5">
             <div>
               <label for="estimatedValue" class="form-label"
@@ -203,7 +211,12 @@
             </div>
           </div>
 
-          <!-- Photos -->
+          <!-- Photos sub-heading -->
+          <p class="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-2">Photos</p>
+          <p class="text-xs text-surface-400 mb-3">
+            Show the actual condition of what you're offering. The first photo is used as the cover
+            image.
+          </p>
           <div>
             <label class="form-label"
               >Photos
@@ -278,11 +291,15 @@
           </div>
         </div>
 
-        <!-- ══ WHAT I WANT ══════════════════════════════════════════════════ -->
-        <div class="pb-5 border-b border-surface-100">
-          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
-            What I'm Looking For
-          </h2>
+        <!-- ══ SECTION 4 — WHAT YOU WANT ════════════════════════════════════ -->
+        <div class="pb-6 border-b border-surface-100">
+          <div class="mb-5">
+            <h2 class="text-base font-bold text-surface-800">What Are You Looking For?</h2>
+            <p class="text-sm text-surface-500 mt-0.5">
+              Tell other traders what you'd like in exchange. Being specific increases your chances
+              of a good match.
+            </p>
+          </div>
 
           <!-- Open to offers toggle -->
           <label class="flex items-center gap-2 mb-4 cursor-pointer select-none">
@@ -382,11 +399,14 @@
           </div>
         </div>
 
-        <!-- ══ EXCHANGE METHOD ══════════════════════════════════════════════ -->
-        <div class="pb-5 border-b border-surface-100">
-          <h2 class="text-sm font-semibold text-surface-500 uppercase tracking-wide mb-4">
-            Exchange Method
-          </h2>
+        <!-- ══ SECTION 5 — EXCHANGE DETAILS ════════════════════════════════ -->
+        <div class="pb-6 border-b border-surface-100">
+          <div class="mb-5">
+            <h2 class="text-base font-bold text-surface-800">Exchange Details</h2>
+            <p class="text-sm text-surface-500 mt-0.5">
+              Let traders know where and how the exchange can happen.
+            </p>
+          </div>
           <div class="flex flex-wrap gap-2">
             <label
               v-for="opt in exchangeMethodOptions"
@@ -409,8 +429,8 @@
           </div>
         </div>
 
-        <!-- ══ ACTIONS ══════════════════════════════════════════════════════ -->
-        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+        <!-- ══ ACTIONS ════════════════════════════════════════════════════════ -->
+        <div class="flex flex-col-reverse sm:flex-row gap-3 pt-2">
           <button
             type="submit"
             class="btn-secondary flex-1 py-2.5 flex items-center justify-center gap-2 disabled:opacity-60"
@@ -459,7 +479,9 @@
               />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
-            Save &amp; Publish
+            {{
+              listingStore.submitting && submitAction === 'publish' ? 'Creating…' : 'Create Listing'
+            }}
           </button>
         </div>
       </form>

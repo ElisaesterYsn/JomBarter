@@ -45,16 +45,14 @@
         <span
           v-if="tab.count > 0"
           class="ml-1.5 text-[11px] bg-primary-600 text-white px-1.5 py-0.5 rounded-full font-bold"
+          >{{ tab.count }}</span
         >
-          {{ tab.count }}
-        </span>
       </button>
     </div>
 
     <!-- Loading skeletons -->
     <div v-if="activeLoading" class="space-y-4">
       <div v-for="n in 2" :key="n" class="card animate-pulse space-y-4">
-        <!-- Trade visual skeleton -->
         <div class="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
           <div class="space-y-2">
             <div class="aspect-[4/3] bg-surface-200 rounded-xl"></div>
@@ -112,26 +110,22 @@
     <!-- Offer cards -->
     <div v-else class="space-y-5">
       <article v-for="offer in currentOffers" :key="offer.id" class="card !p-0 overflow-hidden">
-        <!-- ── Card header: status + meta ── -->
+        <!-- Card header: who + status -->
         <div
           class="px-4 pt-4 pb-3 flex items-center justify-between gap-2 border-b border-surface-100"
         >
           <div class="flex items-center gap-2 min-w-0">
-            <!-- Avatar -->
             <div
               class="w-7 h-7 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold uppercase shrink-0"
               aria-hidden="true"
             >
-              {{ (activeTab === 'received' ? offer.sender : offer.receiver).displayName.charAt(0) }}
+              {{ counterpart(offer).displayName.charAt(0) }}
             </div>
             <span class="text-xs text-surface-600 truncate">
-              <span class="font-medium text-surface-800">
-                {{ (activeTab === 'received' ? offer.sender : offer.receiver).displayName }}
-              </span>
-              <span class="text-surface-400"> · {{ relativeTime(offer.createdAt) }} </span>
+              <span class="font-medium text-surface-800">{{ counterpart(offer).displayName }}</span>
+              <span class="text-surface-400"> · {{ relativeTime(offer.createdAt) }}</span>
             </span>
           </div>
-          <!-- Status badge -->
           <span
             class="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0"
             :class="statusClass(offer.status)"
@@ -140,10 +134,10 @@
           </span>
         </div>
 
-        <!-- ── Trade visual: YOU OFFER ⇄ FOR ── -->
+        <!-- Trade visual: YOU OFFER ⇄ FOR -->
         <div class="px-4 py-4">
           <div class="grid grid-cols-[1fr_32px_1fr] gap-2 items-start">
-            <!-- Left side: what is offered (the sender's item) -->
+            <!-- Offered item (sender's listing) -->
             <div class="space-y-2">
               <p
                 class="text-[10px] font-bold text-surface-400 uppercase tracking-widest text-center"
@@ -216,7 +210,7 @@
               </div>
             </div>
 
-            <!-- Right side: target listing (what the sender wants) -->
+            <!-- Target listing (what sender wants) -->
             <div class="space-y-2">
               <p
                 class="text-[10px] font-bold text-surface-400 uppercase tracking-widest text-center"
@@ -278,9 +272,9 @@
           </div>
         </div>
 
-        <!-- ── Actions ── -->
+        <!-- Actions -->
         <div class="px-4 pb-4 flex flex-wrap items-center gap-2 border-t border-surface-100 pt-3">
-          <!-- View listing link always available -->
+          <!-- View listing — always available -->
           <router-link
             :to="`/listings/${offer.targetListing.id}`"
             class="text-xs font-medium text-primary-600 hover:text-primary-800 transition border border-primary-200 rounded-lg px-3 py-1.5 hover:bg-primary-50"
@@ -294,7 +288,7 @@
               type="button"
               class="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-60"
               :disabled="offerStore.processingId === offer.id"
-              @click="handleAccept(offer.id)"
+              @click="requestAction('accept', offer)"
             >
               <svg
                 v-if="offerStore.processingId === offer.id"
@@ -332,19 +326,19 @@
               type="button"
               class="text-xs font-medium px-4 py-1.5 rounded-lg border border-surface-300 text-surface-700 hover:bg-surface-100 transition disabled:opacity-60"
               :disabled="offerStore.processingId === offer.id"
-              @click="handleReject(offer.id)"
+              @click="requestAction('decline', offer)"
             >
               Decline
             </button>
           </template>
 
-          <!-- SENT + PENDING: Cancel -->
+          <!-- SENT + PENDING: Withdraw -->
           <template v-if="activeTab === 'sent' && offer.status === 'PENDING'">
             <button
               type="button"
               class="text-xs font-medium px-4 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition disabled:opacity-60"
               :disabled="offerStore.processingId === offer.id"
-              @click="handleCancel(offer.id)"
+              @click="requestAction('withdraw', offer)"
             >
               <svg
                 v-if="offerStore.processingId === offer.id"
@@ -363,20 +357,81 @@
                 />
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              {{ offerStore.processingId === offer.id ? 'Cancelling…' : 'Cancel Offer' }}
+              {{ offerStore.processingId === offer.id ? 'Withdrawing…' : 'Withdraw Offer' }}
             </button>
           </template>
 
-          <!-- ACCEPTED: note (trade completion phase) -->
+          <!-- ACCEPTED: Complete Trade -->
           <template v-if="offer.status === 'ACCEPTED'">
             <span
               class="text-xs text-green-700 font-medium bg-green-50 border border-green-200 rounded-lg px-3 py-1.5"
             >
-              ✓ Accepted — arrange your exchange!
+              ✓ Accepted — arrange your exchange
             </span>
+            <button
+              type="button"
+              class="text-xs font-semibold px-4 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition disabled:opacity-60"
+              :disabled="offerStore.processingId === offer.id"
+              @click="requestAction('complete', offer)"
+            >
+              <svg
+                v-if="offerStore.processingId === offer.id"
+                class="w-3.5 h-3.5 animate-spin inline mr-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                />
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              {{ offerStore.processingId === offer.id ? 'Completing…' : 'Mark as Completed' }}
+            </button>
           </template>
         </div>
       </article>
+    </div>
+
+    <!-- ══ CONFIRMATION MODAL ════════════════════════════════════════════════ -->
+    <div
+      v-if="confirmTarget"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="`confirm-title-${confirmTarget.offerId}`"
+    >
+      <div class="card w-full max-w-sm space-y-4">
+        <h2
+          :id="`confirm-title-${confirmTarget.offerId}`"
+          class="text-base font-bold text-surface-800"
+        >
+          {{ confirmConfig[confirmTarget.action].title }}
+        </h2>
+        <p class="text-sm text-surface-600">{{ confirmConfig[confirmTarget.action].body }}</p>
+        <div class="flex gap-3 justify-end">
+          <button class="btn-secondary text-sm px-4 py-2" @click="confirmTarget = null">
+            Cancel
+          </button>
+          <button
+            class="text-sm px-4 py-2 rounded-lg font-medium transition text-white disabled:opacity-60"
+            :class="confirmConfig[confirmTarget.action].btnClass"
+            :disabled="offerStore.processingId !== null"
+            @click="executeAction"
+          >
+            {{
+              offerStore.processingId
+                ? 'Processing…'
+                : confirmConfig[confirmTarget.action].confirmLabel
+            }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -385,25 +440,22 @@
 import { ref, computed, onMounted } from 'vue'
 import { useOfferStore } from '@/stores/offer'
 import listingService from '@/services/listingService'
-import type { TradeOffer, OfferListingSnap } from '@/services/offerService'
+import type { TradeOffer, OfferListingSnap, OfferUser } from '@/services/offerService'
 
 const offerStore = useOfferStore()
 const activeTab = ref<'received' | 'sent'>('received')
 
-// Pending count only on received tab
+// ── Tabs ──────────────────────────────────────────────────────────────────────
 const pendingReceivedCount = computed(
   () => offerStore.received.filter((o) => o.status === 'PENDING').length,
 )
-
 const tabs = computed(() => [
   { key: 'received' as const, label: 'Received', count: pendingReceivedCount.value },
   { key: 'sent' as const, label: 'Sent', count: 0 },
 ])
-
 const currentOffers = computed(() =>
   activeTab.value === 'received' ? offerStore.received : offerStore.sent,
 )
-
 const activeLoading = computed(() =>
   activeTab.value === 'received' ? offerStore.loadingReceived : offerStore.loadingSent,
 )
@@ -412,44 +464,83 @@ onMounted(async () => {
   await Promise.all([offerStore.fetchReceived(), offerStore.fetchSent()])
 })
 
-// ── Actions (per-offer processing via processingId) ───────────────────────────
-async function handleAccept(id: string) {
-  offerStore.clearError()
-  await offerStore.acceptOffer(id)
+// ── Confirmation dialog ───────────────────────────────────────────────────────
+
+type ActionKey = 'accept' | 'decline' | 'withdraw' | 'complete'
+
+const confirmTarget = ref<{ action: ActionKey; offerId: string } | null>(null)
+
+const confirmConfig: Record<
+  ActionKey,
+  { title: string; body: string; confirmLabel: string; btnClass: string }
+> = {
+  accept: {
+    title: 'Accept this offer?',
+    body: 'You are agreeing to exchange your listing for the offered item. All other pending offers for this listing will be declined.',
+    confirmLabel: 'Yes, accept',
+    btnClass: 'bg-primary-600 hover:bg-primary-700',
+  },
+  decline: {
+    title: 'Decline this offer?',
+    body: 'The sender will be notified that their offer was declined.',
+    confirmLabel: 'Yes, decline',
+    btnClass: 'bg-red-600 hover:bg-red-700',
+  },
+  withdraw: {
+    title: 'Withdraw this offer?',
+    body: 'Your offer will be withdrawn. The listing owner will no longer be able to accept it.',
+    confirmLabel: 'Yes, withdraw',
+    btnClass: 'bg-red-600 hover:bg-red-700',
+  },
+  complete: {
+    title: 'Mark trade as completed?',
+    body: 'This confirms that the physical exchange has happened. The listing will be marked as Traded and removed from the marketplace.',
+    confirmLabel: 'Yes, mark completed',
+    btnClass: 'bg-green-600 hover:bg-green-700',
+  },
 }
 
-async function handleReject(id: string) {
+function requestAction(action: ActionKey, offer: TradeOffer) {
   offerStore.clearError()
-  await offerStore.rejectOffer(id)
+  confirmTarget.value = { action, offerId: offer.id }
 }
 
-async function handleCancel(id: string) {
-  offerStore.clearError()
-  await offerStore.cancelOffer(id)
+async function executeAction() {
+  if (!confirmTarget.value) return
+  const { action, offerId } = confirmTarget.value
+  confirmTarget.value = null // close modal immediately
+  try {
+    if (action === 'accept') await offerStore.acceptOffer(offerId)
+    if (action === 'decline') await offerStore.declineOffer(offerId)
+    if (action === 'withdraw') await offerStore.withdrawOffer(offerId)
+    if (action === 'complete') await offerStore.completeOffer(offerId)
+  } catch {
+    // error surfaced via offerStore.error banner
+  }
 }
 
 // ── Trade visual helpers ──────────────────────────────────────────────────────
 
+function counterpart(offer: TradeOffer): OfferUser {
+  return activeTab.value === 'received' ? offer.sender : offer.receiver
+}
+
 function offeredItem(offer: TradeOffer): OfferListingSnap | null {
   return offer.offeredItems[0]?.listing ?? null
 }
-
 function offeredImage(offer: TradeOffer): string | null {
   const item = offeredItem(offer)
   if (!item?.images?.length) return null
   const m = item.images.find((i) => i.imageUrl)
   return m ? listingService.mediaUrl(m.imageUrl) : null
 }
-
-function offeredTitle(offer: TradeOffer): string {
+function offeredTitle(offer: TradeOffer) {
   return offeredItem(offer)?.title ?? 'Unknown item'
 }
-
-function offeredCondition(offer: TradeOffer): string {
+function offeredCondition(offer: TradeOffer) {
   return offeredItem(offer)?.condition ?? ''
 }
-
-function offeredValue(offer: TradeOffer): number | null {
+function offeredValue(offer: TradeOffer) {
   return offeredItem(offer)?.estimatedValue ?? null
 }
 
@@ -471,23 +562,25 @@ function conditionLabel(c: string) {
   return conditionLabels[c] ?? c
 }
 
-function statusLabel(s: string) {
+function statusLabel(s: string): string {
   const map: Record<string, string> = {
     PENDING: 'Pending',
     ACCEPTED: 'Accepted',
-    REJECTED: 'Declined',
-    CANCELLED: 'Cancelled',
+    DECLINED: 'Declined',
+    WITHDRAWN: 'Withdrawn',
+    COMPLETED: 'Completed',
     EXPIRED: 'Expired',
   }
   return map[s] ?? s
 }
 
-function statusClass(s: string) {
+function statusClass(s: string): string {
   const map: Record<string, string> = {
     PENDING: 'bg-amber-100 text-amber-800',
     ACCEPTED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-700',
-    CANCELLED: 'bg-surface-200 text-surface-600',
+    DECLINED: 'bg-red-100 text-red-700',
+    WITHDRAWN: 'bg-surface-200 text-surface-600',
+    COMPLETED: 'bg-blue-100 text-blue-800',
     EXPIRED: 'bg-surface-200 text-surface-500',
   }
   return map[s] ?? 'bg-surface-100 text-surface-700'

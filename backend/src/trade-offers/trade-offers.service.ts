@@ -1,5 +1,5 @@
 import {
-  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   Logger,
@@ -8,9 +8,31 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTradeOfferDto } from './dto/create-trade-offer.dto';
 
-// Offer statuses — matches schema comment
-export const OFFER_STATUSES = ['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED', 'EXPIRED'] as const;
+// ── Status constants ──────────────────────────────────────────────────────────
+// These are the canonical status values stored in the database.
+// DECLINED  = recipient rejected the offer  (was: REJECTED)
+// WITHDRAWN = sender cancelled before acceptance (was: CANCELLED)
+// COMPLETED = trade physically completed after ACCEPTED
+export const OFFER_STATUSES = [
+  'PENDING',
+  'ACCEPTED',
+  'DECLINED',
+  'WITHDRAWN',
+  'COMPLETED',
+  'EXPIRED',
+] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
+
+// Valid transitions enforced on the backend
+// { from: Set<to> }
+const VALID_TRANSITIONS: Record<string, readonly string[]> = {
+  PENDING: ['ACCEPTED', 'DECLINED', 'WITHDRAWN'],
+  ACCEPTED: ['COMPLETED'],
+  DECLINED: [],
+  WITHDRAWN: [],
+  COMPLETED: [],
+  EXPIRED: [],
+};
 
 /** Fields included on every offer query */
 const OFFER_INCLUDE = {
@@ -34,7 +56,7 @@ export class TradeOffersService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  // ── Create offer ──────────────────────────────────────────────────────────
+  // ── Create ────────────────────────────────────────────────────────────────
 
   async create(senderId: string, dto: CreateTradeOfferDto) {
     const { targetListingId, offeredListingId, message } = dto;
@@ -45,12 +67,12 @@ export class TradeOffersService {
     });
     if (!targetListing) throw new NotFoundException('Target listing not found');
     if (targetListing.status !== 'ACTIVE') {
-      throw new BadRequestException('This listing is no longer available for barter');
+      throw new ConflictException('This listing is no longer available for barter');
     }
 
     // 2. Cannot offer on your own listing
     if (targetListing.userId === senderId) {
-      throw new BadRequestException('You cannot make an offer on your own listing');
+      throw new ConflictException('You cannot make an offer on your own listing');
     }
 
     // 3. Offered listing must exist, be ACTIVE, and belong to the sender
@@ -62,13 +84,13 @@ export class TradeOffersService {
       throw new ForbiddenException('You can only offer your own listings');
     }
     if (offeredListing.status !== 'ACTIVE') {
-      throw new BadRequestException('The listing you are offering must be active/published');
+      throw new ConflictException('The listing you are offering must be active/published');
     }
     if (offeredListing.id === targetListingId) {
-      throw new BadRequestException('You cannot offer the same listing you are targeting');
+      throw new ConflictException('You cannot offer the same listing you are targeting');
     }
 
-    // 4. No duplicate pending offer for same pair
+    // 4. No duplicate PENDING offer for same pair
     const existing = await this.prisma.tradeOffer.findFirst({
       where: {
         senderId,
@@ -78,7 +100,7 @@ export class TradeOffersService {
       },
     });
     if (existing) {
-      throw new BadRequestException('You already have a pending offer for this listing');
+      throw new ConflictException('You already have a pending offer for this listing');
     }
 
     // 5. Create offer + item in a transaction
@@ -101,7 +123,7 @@ export class TradeOffersService {
     return this.findOne(offer.id);
   }
 
-  // ── Get received offers ───────────────────────────────────────────────────
+  // ── Queries ───────────────────────────────────────────────────────────────
 
   async findReceived(userId: string) {
     return this.prisma.tradeOffer.findMany({
@@ -111,8 +133,6 @@ export class TradeOffersService {
     });
   }
 
-  // ── Get sent offers ───────────────────────────────────────────────────────
-
   async findSent(userId: string) {
     return this.prisma.tradeOffer.findMany({
       where: { senderId: userId },
@@ -120,8 +140,6 @@ export class TradeOffersService {
       orderBy: { createdAt: 'desc' },
     });
   }
-
-  // ── Get single offer ──────────────────────────────────────────────────────
 
   async findOne(id: string) {
     const offer = await this.prisma.tradeOffer.findUnique({
@@ -132,75 +150,125 @@ export class TradeOffersService {
     return offer;
   }
 
-  // ── Accept offer ──────────────────────────────────────────────────────────
+  // ── Accept (PENDING → ACCEPTED) ───────────────────────────────────────────
+  // Receiver only. Creates Trade record and rejects competing PENDING offers.
 
   async accept(id: string, userId: string) {
-    const offer = await this.assertOfferExists(id);
-    if (offer.receiverId !== userId) throw new ForbiddenException('Not your offer to accept');
-    if (offer.status !== 'PENDING') {
-      throw new BadRequestException(`Offer is already ${offer.status}`);
-    }
+    const offer = await this.loadAndAuthorize(id, userId, 'receiver');
+    this.assertTransition(offer.status, 'ACCEPTED');
 
-    // Accept + create Trade record in a transaction
     await this.prisma.$transaction(async (tx) => {
       await tx.tradeOffer.update({
         where: { id },
         data: { status: 'ACCEPTED', respondedAt: new Date() },
       });
-      await tx.trade.create({
-        data: { tradeOfferId: id, status: 'ACTIVE' },
-      });
-      // Reject all other pending offers for the same target listing
+      // Create Trade record (status ACTIVE)
+      await tx.trade.create({ data: { tradeOfferId: id, status: 'ACTIVE' } });
+      // Decline all other PENDING offers for the same target listing
       await tx.tradeOffer.updateMany({
         where: {
           targetListingId: offer.targetListingId,
           status: 'PENDING',
           id: { not: id },
         },
-        data: { status: 'REJECTED', respondedAt: new Date() },
+        data: { status: 'DECLINED', respondedAt: new Date() },
       });
     });
 
     return this.findOne(id);
   }
 
-  // ── Reject offer ──────────────────────────────────────────────────────────
+  // ── Decline (PENDING → DECLINED) ─────────────────────────────────────────
+  // Receiver only.
 
-  async reject(id: string, userId: string) {
-    const offer = await this.assertOfferExists(id);
-    if (offer.receiverId !== userId) throw new ForbiddenException('Not your offer to reject');
-    if (offer.status !== 'PENDING') {
-      throw new BadRequestException(`Offer is already ${offer.status}`);
-    }
+  async decline(id: string, userId: string) {
+    const offer = await this.loadAndAuthorize(id, userId, 'receiver');
+    this.assertTransition(offer.status, 'DECLINED');
 
     await this.prisma.tradeOffer.update({
       where: { id },
-      data: { status: 'REJECTED', respondedAt: new Date() },
+      data: { status: 'DECLINED', respondedAt: new Date() },
     });
     return this.findOne(id);
   }
 
-  // ── Cancel offer (sender only) ────────────────────────────────────────────
+  // ── Withdraw (PENDING → WITHDRAWN) ───────────────────────────────────────
+  // Sender only. Can only withdraw a PENDING offer.
 
-  async cancel(id: string, userId: string) {
-    const offer = await this.assertOfferExists(id);
-    if (offer.senderId !== userId) throw new ForbiddenException('Not your offer to cancel');
-    if (!['PENDING', 'ACCEPTED'].includes(offer.status)) {
-      throw new BadRequestException(`Offer cannot be cancelled (status: ${offer.status})`);
-    }
+  async withdraw(id: string, userId: string) {
+    const offer = await this.loadAndAuthorize(id, userId, 'sender');
+    this.assertTransition(offer.status, 'WITHDRAWN');
 
     await this.prisma.tradeOffer.update({
       where: { id },
-      data: { status: 'CANCELLED' },
+      data: { status: 'WITHDRAWN' },
     });
+    return this.findOne(id);
+  }
+
+  // ── Complete (ACCEPTED → COMPLETED) ──────────────────────────────────────
+  // Either participant can mark the trade as physically completed.
+
+  async complete(id: string, userId: string) {
+    const offer = await this.loadAndAuthorize(id, userId, 'participant');
+    this.assertTransition(offer.status, 'COMPLETED');
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update offer status
+      await tx.tradeOffer.update({
+        where: { id },
+        data: { status: 'COMPLETED', respondedAt: new Date() },
+      });
+      // Update the linked Trade record
+      await tx.trade.updateMany({
+        where: { tradeOfferId: id },
+        data: { status: 'COMPLETED', completedAt: new Date() },
+      });
+      // Mark the target listing as TRADED so it leaves the public feed
+      await tx.listing.update({
+        where: { id: offer.targetListingId },
+        data: { status: 'TRADED' },
+      });
+    });
+
     return this.findOne(id);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  private async assertOfferExists(id: string) {
+  /**
+   * Load an offer and verify the caller is authorized for the requested role.
+   * Throws 404 if the offer doesn't exist, 403 if the caller is not authorized.
+   */
+  private async loadAndAuthorize(
+    id: string,
+    userId: string,
+    role: 'sender' | 'receiver' | 'participant',
+  ) {
     const offer = await this.prisma.tradeOffer.findUnique({ where: { id } });
     if (!offer) throw new NotFoundException('Offer not found');
+
+    if (role === 'sender' && offer.senderId !== userId) {
+      throw new ForbiddenException('Only the sender can perform this action');
+    }
+    if (role === 'receiver' && offer.receiverId !== userId) {
+      throw new ForbiddenException('Only the recipient can perform this action');
+    }
+    if (role === 'participant' && offer.senderId !== userId && offer.receiverId !== userId) {
+      throw new ForbiddenException('Only trade participants can perform this action');
+    }
+
     return offer;
+  }
+
+  /**
+   * Verify that a transition from `currentStatus` to `nextStatus` is valid.
+   * Throws 409 Conflict if the transition is not allowed.
+   */
+  private assertTransition(currentStatus: string, nextStatus: string) {
+    const allowed = VALID_TRANSITIONS[currentStatus] ?? [];
+    if (!allowed.includes(nextStatus)) {
+      throw new ConflictException(`Cannot transition offer from ${currentStatus} to ${nextStatus}`);
+    }
   }
 }
