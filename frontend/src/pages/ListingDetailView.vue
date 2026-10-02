@@ -142,12 +142,21 @@
           <div class="card">
             <!-- Condition + status row -->
             <div class="flex items-center gap-2 mb-3 flex-wrap">
+              <!-- Listing type badge -->
+              <span
+                class="inline-flex items-center gap-1 text-xs font-medium bg-surface-100 text-surface-600 px-2.5 py-1 rounded-full border border-surface-200"
+              >
+                <span aria-hidden="true">{{ listingTypeEmoji(listing.listingType) }}</span>
+                {{ listingTypeLabel(listing.listingType) }}
+              </span>
+              <!-- Condition -->
               <span
                 class="text-xs font-bold px-2.5 py-1 rounded-full"
                 :class="conditionClass(listing.condition)"
               >
                 {{ conditionLabel(listing.condition) }}
               </span>
+              <!-- Status (only when not ACTIVE) -->
               <span
                 v-if="listing.status !== 'ACTIVE'"
                 class="text-xs font-semibold px-2.5 py-1 rounded-full"
@@ -165,11 +174,12 @@
                       : listing.status
                 }}
               </span>
+              <!-- Category -->
               <span
                 v-if="listing.category"
                 class="text-xs bg-surface-100 text-surface-600 px-2.5 py-1 rounded-full font-medium"
               >
-                {{ listing.category.name }}
+                📂 {{ listing.category.name }}
               </span>
             </div>
 
@@ -218,12 +228,47 @@
             </div>
 
             <!-- Estimated value -->
-            <div
-              v-if="listing.estimatedValue"
-              class="mt-3 inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold px-3 py-1.5 rounded-xl"
+            <div v-if="listing.estimatedValue" class="mt-3">
+              <div
+                class="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold px-3 py-1.5 rounded-xl"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                RM {{ listing.estimatedValue.toLocaleString() }}
+              </div>
+              <p class="mt-1 text-xs text-surface-400">Estimated value — not a selling price</p>
+            </div>
+          </div>
+
+          <!-- ── Description ── -->
+          <div class="card">
+            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
+              About This Listing
+            </h2>
+            <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
+              {{ listing.description }}
+            </p>
+          </div>
+
+          <!-- ── What they want (most important barter field) ── -->
+          <div v-if="listing.lookingFor" class="card border-primary-200 bg-primary-50">
+            <h2
+              class="text-xs font-bold text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-1.5"
             >
               <svg
-                class="w-4 h-4"
+                class="w-3.5 h-3.5 shrink-0"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -232,39 +277,13 @@
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              Estimated value: RM {{ listing.estimatedValue.toLocaleString() }}
-            </div>
-          </div>
-
-          <!-- ── Description ── -->
-          <div class="card">
-            <h2 class="text-xs font-bold text-surface-500 uppercase tracking-widest mb-3">
-              Description
-            </h2>
-            <p class="text-sm text-surface-700 leading-relaxed whitespace-pre-line">
-              {{ listing.description }}
-            </p>
-          </div>
-
-          <!-- ── What they want (most important barter field) ── -->
-          <div v-if="listing.lookingFor" class="card bg-primary-50 border-primary-100">
-            <h2
-              class="text-xs font-bold text-primary-700 uppercase tracking-widest mb-2 flex items-center gap-1.5"
-            >
-              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path
-                  fill-rule="evenodd"
+                  stroke-width="2.5"
                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  clip-rule="evenodd"
                 />
               </svg>
-              Looking to trade for
+              Looking to Trade For
             </h2>
-            <p class="text-sm text-primary-900 leading-relaxed font-medium">
+            <p class="text-base text-primary-900 leading-relaxed font-semibold">
               {{ listing.lookingFor }}
             </p>
           </div>
@@ -938,5 +957,20 @@ function fullDate(iso: string): string {
     month: 'long',
     day: 'numeric',
   })
+}
+
+// Listing type is now always PHYSICAL_ITEM, but keep helpers in case
+// future types are re-introduced without requiring a template change.
+const listingTypeLabels: Record<string, string> = {
+  PHYSICAL_ITEM: 'Physical Item',
+}
+const listingTypeEmojis: Record<string, string> = {
+  PHYSICAL_ITEM: '📦',
+}
+function listingTypeLabel(t: string) {
+  return listingTypeLabels[t] ?? 'Physical Item'
+}
+function listingTypeEmoji(t: string) {
+  return listingTypeEmojis[t] ?? '📦'
 }
 </script>
