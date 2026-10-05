@@ -1,3 +1,199 @@
+<script setup lang="ts">
+import { reactive, ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useListingStore } from '@/stores/listing'
+import listingService, {
+  type Category,
+  type ListingCondition,
+  serializeCommaList,
+} from '@/services/listingService'
+
+const router = useRouter()
+const listingStore = useListingStore()
+
+// ── Options ───────────────────────────────────────────────────────────────────
+const conditionOptions = [
+  { value: 'NEW', label: 'New', emoji: '✨' },
+  { value: 'LIKE_NEW', label: 'Like New', emoji: '🌟' },
+  { value: 'GOOD', label: 'Good', emoji: '👍' },
+  { value: 'FAIR', label: 'Fair', emoji: '🔧' },
+  { value: 'POOR', label: 'Poor', emoji: '⚠️' },
+]
+const tradePreferenceOptions = [
+  { value: 'SPECIFIC_ITEM', label: 'Specific item only' },
+  { value: 'SIMILAR_VALUE', label: 'Similar value items' },
+  { value: 'OPEN_OFFERS', label: 'Open to offers' },
+  { value: 'MULTIPLE_ITEMS', label: 'Multiple items for one' },
+]
+const exchangeMethodOptions = [
+  { value: 'MEETUP', label: 'Meet-up', emoji: '🤝' },
+  { value: 'SELF_PICKUP', label: 'Self pickup', emoji: '🚶' },
+  { value: 'DELIVERY', label: 'Delivery', emoji: '🚗' },
+  { value: 'SHIPPING', label: 'Shipping', emoji: '📬' },
+  { value: 'ONLINE', label: 'Online/Digital', emoji: '💻' },
+]
+
+// ── Categories ────────────────────────────────────────────────────────────────
+const categories = ref<Category[]>([])
+const categoriesLoading = ref(true)
+onMounted(async () => {
+  try {
+    categories.value = await listingService.getCategories()
+  } catch {
+    /* non-fatal */
+  } finally {
+    categoriesLoading.value = false
+  }
+})
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+const form = reactive({
+  title: '',
+  description: '',
+  categoryId: '',
+  condition: '' as ListingCondition | '',
+  estimatedValue: null as number | null,
+  location: '',
+  lookingFor: '',
+  tradePreferences: [] as string[],
+  interestedInCategories: [] as string[],
+  exchangeMethods: [] as string[],
+})
+const errors = reactive({
+  title: '',
+  description: '',
+  categoryId: '',
+  condition: '',
+  estimatedValue: '',
+  lookingFor: '',
+  images: '',
+})
+const submitAction = ref<'draft' | 'publish'>('draft')
+const openToOffers = ref(false)
+
+function onOpenToOffersChange() {
+  if (openToOffers.value) {
+    form.lookingFor = 'Open to reasonable offers'
+    errors.lookingFor = ''
+  } else form.lookingFor = ''
+}
+
+// ── Images ────────────────────────────────────────────────────────────────────
+interface ImageItem {
+  file: File
+  preview: string
+}
+const imageFiles = ref<ImageItem[]>([])
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const isDragging = ref(false)
+const MAX_IMG = 8
+const MAX_BYTES = 10 * 1024 * 1024
+const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
+function addFiles(raw: FileList | File[]) {
+  errors.images = ''
+  for (const f of Array.from(raw)) {
+    if (imageFiles.value.length >= MAX_IMG) {
+      errors.images = `Max ${MAX_IMG} photos.`
+      break
+    }
+    if (!ALLOWED.includes(f.type)) {
+      errors.images = `"${f.name}" is not an accepted image type.`
+      continue
+    }
+    if (f.size > MAX_BYTES) {
+      errors.images = `"${f.name}" exceeds 10 MB.`
+      continue
+    }
+    imageFiles.value.push({ file: f, preview: URL.createObjectURL(f) })
+  }
+}
+function handleFileChange(e: Event) {
+  const i = e.target as HTMLInputElement
+  if (i.files) addFiles(i.files)
+  i.value = ''
+}
+function handleDrop(e: DragEvent) {
+  isDragging.value = false
+  if (e.dataTransfer?.files) addFiles(e.dataTransfer.files)
+}
+function removeFile(i: number) {
+  URL.revokeObjectURL(imageFiles.value[i].preview)
+  imageFiles.value.splice(i, 1)
+}
+onUnmounted(() => imageFiles.value.forEach((i) => URL.revokeObjectURL(i.preview)))
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validate(field: keyof typeof errors) {
+  switch (field) {
+    case 'title':
+      errors.title = !form.title
+        ? 'Required.'
+        : form.title.length < 3
+          ? 'Min 3 chars.'
+          : form.title.length > 120
+            ? 'Max 120 chars.'
+            : ''
+      break
+    case 'description':
+      errors.description = !form.description
+        ? 'Required.'
+        : form.description.length < 10
+          ? 'Min 10 chars.'
+          : form.description.length > 3000
+            ? 'Max 3000 chars.'
+            : ''
+      break
+    case 'categoryId':
+      errors.categoryId = form.categoryId ? '' : 'Required.'
+      break
+    case 'condition':
+      errors.condition = form.condition ? '' : 'Required.'
+      break
+    case 'estimatedValue':
+      errors.estimatedValue =
+        form.estimatedValue !== null && form.estimatedValue < 0 ? 'Must be ≥ 0.' : ''
+      break
+    case 'lookingFor':
+      errors.lookingFor = form.lookingFor.length > 1000 ? 'Max 1000 chars.' : ''
+      break
+  }
+}
+function validateAll() {
+  ;(
+    ['title', 'description', 'categoryId', 'condition', 'estimatedValue', 'lookingFor'] as const
+  ).forEach(validate)
+  return !Object.values(errors).some(Boolean)
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function handleSubmit() {
+  listingStore.clearError()
+  if (!validateAll()) return
+  try {
+    const listing = await listingStore.create(
+      {
+        title: form.title,
+        description: form.description,
+        categoryId: form.categoryId,
+        condition: form.condition as ListingCondition,
+        estimatedValue: form.estimatedValue ?? undefined,
+        location: form.location || undefined,
+        lookingFor: form.lookingFor || undefined,
+        tradePreference: serializeCommaList(form.tradePreferences),
+        exchangeMethod: serializeCommaList(form.exchangeMethods),
+        interestedInCategories: serializeCommaList(form.interestedInCategories),
+      },
+      imageFiles.value.map((i) => i.file),
+    )
+    if (submitAction.value === 'publish') await listingStore.publish(listing.id)
+    router.push('/my-listings')
+  } catch {
+    /* banner handles */
+  }
+}
+</script>
+
 <template>
   <div class="max-w-2xl mx-auto">
     <div class="mb-6">
@@ -488,199 +684,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { reactive, ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useListingStore } from '@/stores/listing'
-import listingService, {
-  type Category,
-  type ListingCondition,
-  serializeCommaList,
-} from '@/services/listingService'
-
-const router = useRouter()
-const listingStore = useListingStore()
-
-// ── Options ───────────────────────────────────────────────────────────────────
-const conditionOptions = [
-  { value: 'NEW', label: 'New', emoji: '✨' },
-  { value: 'LIKE_NEW', label: 'Like New', emoji: '🌟' },
-  { value: 'GOOD', label: 'Good', emoji: '👍' },
-  { value: 'FAIR', label: 'Fair', emoji: '🔧' },
-  { value: 'POOR', label: 'Poor', emoji: '⚠️' },
-]
-const tradePreferenceOptions = [
-  { value: 'SPECIFIC_ITEM', label: 'Specific item only' },
-  { value: 'SIMILAR_VALUE', label: 'Similar value items' },
-  { value: 'OPEN_OFFERS', label: 'Open to offers' },
-  { value: 'MULTIPLE_ITEMS', label: 'Multiple items for one' },
-]
-const exchangeMethodOptions = [
-  { value: 'MEETUP', label: 'Meet-up', emoji: '🤝' },
-  { value: 'SELF_PICKUP', label: 'Self pickup', emoji: '🚶' },
-  { value: 'DELIVERY', label: 'Delivery', emoji: '🚗' },
-  { value: 'SHIPPING', label: 'Shipping', emoji: '📬' },
-  { value: 'ONLINE', label: 'Online/Digital', emoji: '💻' },
-]
-
-// ── Categories ────────────────────────────────────────────────────────────────
-const categories = ref<Category[]>([])
-const categoriesLoading = ref(true)
-onMounted(async () => {
-  try {
-    categories.value = await listingService.getCategories()
-  } catch {
-    /* non-fatal */
-  } finally {
-    categoriesLoading.value = false
-  }
-})
-
-// ── Form ──────────────────────────────────────────────────────────────────────
-const form = reactive({
-  title: '',
-  description: '',
-  categoryId: '',
-  condition: '' as ListingCondition | '',
-  estimatedValue: null as number | null,
-  location: '',
-  lookingFor: '',
-  tradePreferences: [] as string[],
-  interestedInCategories: [] as string[],
-  exchangeMethods: [] as string[],
-})
-const errors = reactive({
-  title: '',
-  description: '',
-  categoryId: '',
-  condition: '',
-  estimatedValue: '',
-  lookingFor: '',
-  images: '',
-})
-const submitAction = ref<'draft' | 'publish'>('draft')
-const openToOffers = ref(false)
-
-function onOpenToOffersChange() {
-  if (openToOffers.value) {
-    form.lookingFor = 'Open to reasonable offers'
-    errors.lookingFor = ''
-  } else form.lookingFor = ''
-}
-
-// ── Images ────────────────────────────────────────────────────────────────────
-interface ImageItem {
-  file: File
-  preview: string
-}
-const imageFiles = ref<ImageItem[]>([])
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const isDragging = ref(false)
-const MAX_IMG = 8
-const MAX_BYTES = 10 * 1024 * 1024
-const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-
-function addFiles(raw: FileList | File[]) {
-  errors.images = ''
-  for (const f of Array.from(raw)) {
-    if (imageFiles.value.length >= MAX_IMG) {
-      errors.images = `Max ${MAX_IMG} photos.`
-      break
-    }
-    if (!ALLOWED.includes(f.type)) {
-      errors.images = `"${f.name}" is not an accepted image type.`
-      continue
-    }
-    if (f.size > MAX_BYTES) {
-      errors.images = `"${f.name}" exceeds 10 MB.`
-      continue
-    }
-    imageFiles.value.push({ file: f, preview: URL.createObjectURL(f) })
-  }
-}
-function handleFileChange(e: Event) {
-  const i = e.target as HTMLInputElement
-  if (i.files) addFiles(i.files)
-  i.value = ''
-}
-function handleDrop(e: DragEvent) {
-  isDragging.value = false
-  if (e.dataTransfer?.files) addFiles(e.dataTransfer.files)
-}
-function removeFile(i: number) {
-  URL.revokeObjectURL(imageFiles.value[i].preview)
-  imageFiles.value.splice(i, 1)
-}
-onUnmounted(() => imageFiles.value.forEach((i) => URL.revokeObjectURL(i.preview)))
-
-// ── Validation ────────────────────────────────────────────────────────────────
-function validate(field: keyof typeof errors) {
-  switch (field) {
-    case 'title':
-      errors.title = !form.title
-        ? 'Required.'
-        : form.title.length < 3
-          ? 'Min 3 chars.'
-          : form.title.length > 120
-            ? 'Max 120 chars.'
-            : ''
-      break
-    case 'description':
-      errors.description = !form.description
-        ? 'Required.'
-        : form.description.length < 10
-          ? 'Min 10 chars.'
-          : form.description.length > 3000
-            ? 'Max 3000 chars.'
-            : ''
-      break
-    case 'categoryId':
-      errors.categoryId = form.categoryId ? '' : 'Required.'
-      break
-    case 'condition':
-      errors.condition = form.condition ? '' : 'Required.'
-      break
-    case 'estimatedValue':
-      errors.estimatedValue =
-        form.estimatedValue !== null && form.estimatedValue < 0 ? 'Must be ≥ 0.' : ''
-      break
-    case 'lookingFor':
-      errors.lookingFor = form.lookingFor.length > 1000 ? 'Max 1000 chars.' : ''
-      break
-  }
-}
-function validateAll() {
-  ;(
-    ['title', 'description', 'categoryId', 'condition', 'estimatedValue', 'lookingFor'] as const
-  ).forEach(validate)
-  return !Object.values(errors).some(Boolean)
-}
-
-// ── Submit ────────────────────────────────────────────────────────────────────
-async function handleSubmit() {
-  listingStore.clearError()
-  if (!validateAll()) return
-  try {
-    const listing = await listingStore.create(
-      {
-        title: form.title,
-        description: form.description,
-        categoryId: form.categoryId,
-        condition: form.condition as ListingCondition,
-        estimatedValue: form.estimatedValue ?? undefined,
-        location: form.location || undefined,
-        lookingFor: form.lookingFor || undefined,
-        tradePreference: serializeCommaList(form.tradePreferences),
-        exchangeMethod: serializeCommaList(form.exchangeMethods),
-        interestedInCategories: serializeCommaList(form.interestedInCategories),
-      },
-      imageFiles.value.map((i) => i.file),
-    )
-    if (submitAction.value === 'publish') await listingStore.publish(listing.id)
-    router.push('/my-listings')
-  } catch {
-    /* banner handles */
-  }
-}
-</script>

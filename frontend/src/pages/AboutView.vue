@@ -1,3 +1,7 @@
+<script setup lang="ts">
+// About page component
+</script>
+
 <template>
   <div class="card max-w-4xl mx-auto">
     <h1 class="text-3xl font-bold mb-6">About JomBarter</h1>
@@ -72,7 +76,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-// About page component
-</script>

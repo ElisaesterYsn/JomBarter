@@ -1,3 +1,166 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useOfferStore } from '@/stores/offer'
+import listingService from '@/services/listingService'
+import type { TradeOffer, OfferListingSnap, OfferUser } from '@/services/offerService'
+
+const offerStore = useOfferStore()
+const activeTab = ref<'received' | 'sent'>('received')
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const pendingReceivedCount = computed(
+  () => offerStore.received.filter((o) => o.status === 'PENDING').length,
+)
+const tabs = computed(() => [
+  { key: 'received' as const, label: 'Received', count: pendingReceivedCount.value },
+  { key: 'sent' as const, label: 'Sent', count: 0 },
+])
+const currentOffers = computed(() =>
+  activeTab.value === 'received' ? offerStore.received : offerStore.sent,
+)
+const activeLoading = computed(() =>
+  activeTab.value === 'received' ? offerStore.loadingReceived : offerStore.loadingSent,
+)
+
+onMounted(async () => {
+  await Promise.all([offerStore.fetchReceived(), offerStore.fetchSent()])
+})
+
+// ── Confirmation dialog ───────────────────────────────────────────────────────
+
+type ActionKey = 'accept' | 'decline' | 'withdraw' | 'complete'
+
+const confirmTarget = ref<{ action: ActionKey; offerId: string } | null>(null)
+
+const confirmConfig: Record<
+  ActionKey,
+  { title: string; body: string; confirmLabel: string; btnClass: string }
+> = {
+  accept: {
+    title: 'Accept this offer?',
+    body: 'You are agreeing to exchange your listing for the offered item. All other pending offers for this listing will be declined.',
+    confirmLabel: 'Yes, accept',
+    btnClass: 'bg-primary-600 hover:bg-primary-700',
+  },
+  decline: {
+    title: 'Decline this offer?',
+    body: 'The sender will be notified that their offer was declined.',
+    confirmLabel: 'Yes, decline',
+    btnClass: 'bg-red-600 hover:bg-red-700',
+  },
+  withdraw: {
+    title: 'Withdraw this offer?',
+    body: 'Your offer will be withdrawn. The listing owner will no longer be able to accept it.',
+    confirmLabel: 'Yes, withdraw',
+    btnClass: 'bg-red-600 hover:bg-red-700',
+  },
+  complete: {
+    title: 'Mark trade as completed?',
+    body: 'This confirms that the physical exchange has happened. The listing will be marked as Traded and removed from the marketplace.',
+    confirmLabel: 'Yes, mark completed',
+    btnClass: 'bg-green-600 hover:bg-green-700',
+  },
+}
+
+function requestAction(action: ActionKey, offer: TradeOffer) {
+  offerStore.clearError()
+  confirmTarget.value = { action, offerId: offer.id }
+}
+
+async function executeAction() {
+  if (!confirmTarget.value) return
+  const { action, offerId } = confirmTarget.value
+  confirmTarget.value = null // close modal immediately
+  try {
+    if (action === 'accept') await offerStore.acceptOffer(offerId)
+    if (action === 'decline') await offerStore.declineOffer(offerId)
+    if (action === 'withdraw') await offerStore.withdrawOffer(offerId)
+    if (action === 'complete') await offerStore.completeOffer(offerId)
+  } catch {
+    // error surfaced via offerStore.error banner
+  }
+}
+
+// ── Trade visual helpers ──────────────────────────────────────────────────────
+
+function counterpart(offer: TradeOffer): OfferUser {
+  return activeTab.value === 'received' ? offer.sender : offer.receiver
+}
+
+function offeredItem(offer: TradeOffer): OfferListingSnap | null {
+  return offer.offeredItems[0]?.listing ?? null
+}
+function offeredImage(offer: TradeOffer): string | null {
+  const item = offeredItem(offer)
+  if (!item?.images?.length) return null
+  const m = item.images.find((i) => i.imageUrl)
+  return m ? listingService.mediaUrl(m.imageUrl) : null
+}
+function offeredTitle(offer: TradeOffer) {
+  return offeredItem(offer)?.title ?? 'Unknown item'
+}
+function offeredCondition(offer: TradeOffer) {
+  return offeredItem(offer)?.condition ?? ''
+}
+function offeredValue(offer: TradeOffer) {
+  return offeredItem(offer)?.estimatedValue ?? null
+}
+
+function targetImage(offer: TradeOffer): string | null {
+  if (!offer.targetListing?.images?.length) return null
+  const m = offer.targetListing.images.find((i) => i.imageUrl)
+  return m ? listingService.mediaUrl(m.imageUrl) : null
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────────
+const conditionLabels: Record<string, string> = {
+  NEW: 'New',
+  LIKE_NEW: 'Like New',
+  GOOD: 'Good',
+  FAIR: 'Fair',
+  POOR: 'Poor',
+}
+function conditionLabel(c: string) {
+  return conditionLabels[c] ?? c
+}
+
+function statusLabel(s: string): string {
+  const map: Record<string, string> = {
+    PENDING: 'Pending',
+    ACCEPTED: 'Accepted',
+    DECLINED: 'Declined',
+    WITHDRAWN: 'Withdrawn',
+    COMPLETED: 'Completed',
+    EXPIRED: 'Expired',
+  }
+  return map[s] ?? s
+}
+
+function statusClass(s: string): string {
+  const map: Record<string, string> = {
+    PENDING: 'bg-amber-100 text-amber-800',
+    ACCEPTED: 'bg-green-100 text-green-800',
+    DECLINED: 'bg-red-100 text-red-700',
+    WITHDRAWN: 'bg-surface-200 text-surface-600',
+    COMPLETED: 'bg-blue-100 text-blue-800',
+    EXPIRED: 'bg-surface-200 text-surface-500',
+  }
+  return map[s] ?? 'bg-surface-100 text-surface-700'
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+</script>
+
 <template>
   <div class="max-w-2xl mx-auto space-y-6">
     <!-- Page header -->
@@ -189,33 +352,29 @@
             </div>
 
             <!-- Exchange icon -->
-            <div class="flex items-center justify-center pt-8">
-              <div
-                class="w-8 h-8 rounded-full bg-surface-100 border border-surface-200 flex items-center justify-center text-surface-500"
+            <div class="flex items-center justify-center">
+              <svg
+                class="w-8 h-8 text-primary-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
               >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                  />
-                </svg>
-              </div>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.5"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                />
+              </svg>
             </div>
 
-            <!-- Target listing (what sender wants) -->
+            <!-- Target listing (receiver's listing) -->
             <div class="space-y-2">
               <p
                 class="text-[10px] font-bold text-surface-400 uppercase tracking-widest text-center"
               >
-                {{ activeTab === 'received' ? 'They Want' : 'In Exchange For' }}
+                {{ activeTab === 'received' ? 'For Your' : 'For Their' }}
               </p>
               <div
                 class="rounded-xl overflow-hidden bg-surface-100 border border-surface-200"
@@ -224,7 +383,7 @@
                 <img
                   v-if="targetImage(offer)"
                   :src="targetImage(offer)!"
-                  :alt="offer.targetListing.title"
+                  :alt="offer.targetListing?.title"
                   class="w-full h-full object-cover"
                   loading="lazy"
                 />
@@ -247,11 +406,11 @@
               </div>
               <div class="text-center space-y-0.5">
                 <p class="text-xs font-semibold text-surface-800 line-clamp-2 leading-snug">
-                  {{ offer.targetListing.title }}
+                  {{ offer.targetListing?.title }}
                 </p>
                 <p class="text-[11px] text-surface-500">
-                  {{ conditionLabel(offer.targetListing.condition) }}
-                  <template v-if="offer.targetListing.estimatedValue">
+                  {{ conditionLabel(offer.targetListing?.condition ?? '') }}
+                  <template v-if="offer.targetListing?.estimatedValue">
                     ·
                     <span class="text-amber-700 font-medium"
                       >RM {{ offer.targetListing.estimatedValue.toLocaleString() }}</span
@@ -262,339 +421,100 @@
             </div>
           </div>
 
-          <!-- Message -->
-          <div
-            v-if="offer.message"
-            class="mt-4 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5"
-          >
-            <p class="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-1">Message</p>
-            <p class="text-sm text-surface-700 italic leading-relaxed">"{{ offer.message }}"</p>
+          <!-- Message (if any) -->
+          <div v-if="offer.message" class="mt-4 pt-4 border-t border-surface-100">
+            <p class="text-[10px] font-bold text-surface-400 uppercase tracking-widest mb-1.5">
+              Message
+            </p>
+            <p class="text-sm text-surface-700 leading-relaxed">{{ offer.message }}</p>
           </div>
         </div>
 
         <!-- Actions -->
-        <div class="px-4 pb-4 flex flex-wrap items-center gap-2 border-t border-surface-100 pt-3">
-          <!-- View listing — always available -->
-          <router-link
-            :to="`/listings/${offer.targetListing.id}`"
-            class="text-xs font-medium text-primary-600 hover:text-primary-800 transition border border-primary-200 rounded-lg px-3 py-1.5 hover:bg-primary-50"
-          >
-            View Listing
-          </router-link>
-
-          <!-- RECEIVED + PENDING: Accept & Decline -->
+        <div
+          v-if="offer.status === 'PENDING' || offer.status === 'ACCEPTED'"
+          class="px-4 pb-4 flex gap-2"
+        >
+          <!-- RECEIVED tab actions -->
           <template v-if="activeTab === 'received' && offer.status === 'PENDING'">
             <button
               type="button"
-              class="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-60"
-              :disabled="offerStore.processingId === offer.id"
+              class="btn-primary flex-1 text-sm py-2"
               @click="requestAction('accept', offer)"
             >
-              <svg
-                v-if="offerStore.processingId === offer.id"
-                class="w-3.5 h-3.5 animate-spin"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              <svg
-                v-else
-                class="w-3.5 h-3.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clip-rule="evenodd"
-                />
-              </svg>
-              {{ offerStore.processingId === offer.id ? 'Accepting…' : 'Accept' }}
+              Accept Offer
             </button>
             <button
               type="button"
-              class="text-xs font-medium px-4 py-1.5 rounded-lg border border-surface-300 text-surface-700 hover:bg-surface-100 transition disabled:opacity-60"
-              :disabled="offerStore.processingId === offer.id"
+              class="btn-secondary flex-1 text-sm py-2"
               @click="requestAction('decline', offer)"
             >
               Decline
             </button>
           </template>
 
-          <!-- SENT + PENDING: Withdraw -->
+          <!-- SENT tab + PENDING -->
           <template v-if="activeTab === 'sent' && offer.status === 'PENDING'">
             <button
               type="button"
-              class="text-xs font-medium px-4 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition disabled:opacity-60"
-              :disabled="offerStore.processingId === offer.id"
+              class="btn-secondary w-full text-sm py-2"
               @click="requestAction('withdraw', offer)"
             >
-              <svg
-                v-if="offerStore.processingId === offer.id"
-                class="w-3.5 h-3.5 animate-spin inline mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              {{ offerStore.processingId === offer.id ? 'Withdrawing…' : 'Withdraw Offer' }}
+              Withdraw Offer
             </button>
           </template>
 
-          <!-- ACCEPTED: Complete Trade -->
+          <!-- Both tabs: ACCEPTED → complete -->
           <template v-if="offer.status === 'ACCEPTED'">
-            <span
-              class="text-xs text-green-700 font-medium bg-green-50 border border-green-200 rounded-lg px-3 py-1.5"
-            >
-              ✓ Accepted — arrange your exchange
-            </span>
             <button
               type="button"
-              class="text-xs font-semibold px-4 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white transition disabled:opacity-60"
-              :disabled="offerStore.processingId === offer.id"
+              class="btn-primary w-full text-sm py-2"
               @click="requestAction('complete', offer)"
             >
-              <svg
-                v-if="offerStore.processingId === offer.id"
-                class="w-3.5 h-3.5 animate-spin inline mr-1"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                />
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              {{ offerStore.processingId === offer.id ? 'Completing…' : 'Mark as Completed' }}
+              Mark as Completed
             </button>
           </template>
         </div>
       </article>
     </div>
 
-    <!-- ══ CONFIRMATION MODAL ════════════════════════════════════════════════ -->
-    <div
-      v-if="confirmTarget"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-      :aria-labelledby="`confirm-title-${confirmTarget.offerId}`"
-    >
-      <div class="card w-full max-w-sm space-y-4">
-        <h2
-          :id="`confirm-title-${confirmTarget.offerId}`"
-          class="text-base font-bold text-surface-800"
+    <!-- Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="confirmTarget"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+        @click.self="confirmTarget = null"
+      >
+        <div
+          class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 space-y-4"
+          role="dialog"
+          aria-modal="true"
         >
-          {{ confirmConfig[confirmTarget.action].title }}
-        </h2>
-        <p class="text-sm text-surface-600">{{ confirmConfig[confirmTarget.action].body }}</p>
-        <div class="flex gap-3 justify-end">
-          <button class="btn-secondary text-sm px-4 py-2" @click="confirmTarget = null">
-            Cancel
-          </button>
-          <button
-            class="text-sm px-4 py-2 rounded-lg font-medium transition text-white disabled:opacity-60"
-            :class="confirmConfig[confirmTarget.action].btnClass"
-            :disabled="offerStore.processingId !== null"
-            @click="executeAction"
-          >
-            {{
-              offerStore.processingId
-                ? 'Processing…'
-                : confirmConfig[confirmTarget.action].confirmLabel
-            }}
-          </button>
+          <h3 class="text-lg font-bold text-surface-800">
+            {{ confirmConfig[confirmTarget.action].title }}
+          </h3>
+          <p class="text-sm text-surface-600 leading-relaxed">
+            {{ confirmConfig[confirmTarget.action].body }}
+          </p>
+          <div class="flex gap-3 pt-2">
+            <button
+              type="button"
+              class="flex-1 px-4 py-2 text-sm font-medium text-surface-600 hover:text-surface-800 bg-surface-100 hover:bg-surface-200 rounded-lg transition"
+              @click="confirmTarget = null"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition"
+              :class="confirmConfig[confirmTarget.action].btnClass"
+              @click="executeAction"
+            >
+              {{ confirmConfig[confirmTarget.action].confirmLabel }}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useOfferStore } from '@/stores/offer'
-import listingService from '@/services/listingService'
-import type { TradeOffer, OfferListingSnap, OfferUser } from '@/services/offerService'
-
-const offerStore = useOfferStore()
-const activeTab = ref<'received' | 'sent'>('received')
-
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-const pendingReceivedCount = computed(
-  () => offerStore.received.filter((o) => o.status === 'PENDING').length,
-)
-const tabs = computed(() => [
-  { key: 'received' as const, label: 'Received', count: pendingReceivedCount.value },
-  { key: 'sent' as const, label: 'Sent', count: 0 },
-])
-const currentOffers = computed(() =>
-  activeTab.value === 'received' ? offerStore.received : offerStore.sent,
-)
-const activeLoading = computed(() =>
-  activeTab.value === 'received' ? offerStore.loadingReceived : offerStore.loadingSent,
-)
-
-onMounted(async () => {
-  await Promise.all([offerStore.fetchReceived(), offerStore.fetchSent()])
-})
-
-// ── Confirmation dialog ───────────────────────────────────────────────────────
-
-type ActionKey = 'accept' | 'decline' | 'withdraw' | 'complete'
-
-const confirmTarget = ref<{ action: ActionKey; offerId: string } | null>(null)
-
-const confirmConfig: Record<
-  ActionKey,
-  { title: string; body: string; confirmLabel: string; btnClass: string }
-> = {
-  accept: {
-    title: 'Accept this offer?',
-    body: 'You are agreeing to exchange your listing for the offered item. All other pending offers for this listing will be declined.',
-    confirmLabel: 'Yes, accept',
-    btnClass: 'bg-primary-600 hover:bg-primary-700',
-  },
-  decline: {
-    title: 'Decline this offer?',
-    body: 'The sender will be notified that their offer was declined.',
-    confirmLabel: 'Yes, decline',
-    btnClass: 'bg-red-600 hover:bg-red-700',
-  },
-  withdraw: {
-    title: 'Withdraw this offer?',
-    body: 'Your offer will be withdrawn. The listing owner will no longer be able to accept it.',
-    confirmLabel: 'Yes, withdraw',
-    btnClass: 'bg-red-600 hover:bg-red-700',
-  },
-  complete: {
-    title: 'Mark trade as completed?',
-    body: 'This confirms that the physical exchange has happened. The listing will be marked as Traded and removed from the marketplace.',
-    confirmLabel: 'Yes, mark completed',
-    btnClass: 'bg-green-600 hover:bg-green-700',
-  },
-}
-
-function requestAction(action: ActionKey, offer: TradeOffer) {
-  offerStore.clearError()
-  confirmTarget.value = { action, offerId: offer.id }
-}
-
-async function executeAction() {
-  if (!confirmTarget.value) return
-  const { action, offerId } = confirmTarget.value
-  confirmTarget.value = null // close modal immediately
-  try {
-    if (action === 'accept') await offerStore.acceptOffer(offerId)
-    if (action === 'decline') await offerStore.declineOffer(offerId)
-    if (action === 'withdraw') await offerStore.withdrawOffer(offerId)
-    if (action === 'complete') await offerStore.completeOffer(offerId)
-  } catch {
-    // error surfaced via offerStore.error banner
-  }
-}
-
-// ── Trade visual helpers ──────────────────────────────────────────────────────
-
-function counterpart(offer: TradeOffer): OfferUser {
-  return activeTab.value === 'received' ? offer.sender : offer.receiver
-}
-
-function offeredItem(offer: TradeOffer): OfferListingSnap | null {
-  return offer.offeredItems[0]?.listing ?? null
-}
-function offeredImage(offer: TradeOffer): string | null {
-  const item = offeredItem(offer)
-  if (!item?.images?.length) return null
-  const m = item.images.find((i) => i.imageUrl)
-  return m ? listingService.mediaUrl(m.imageUrl) : null
-}
-function offeredTitle(offer: TradeOffer) {
-  return offeredItem(offer)?.title ?? 'Unknown item'
-}
-function offeredCondition(offer: TradeOffer) {
-  return offeredItem(offer)?.condition ?? ''
-}
-function offeredValue(offer: TradeOffer) {
-  return offeredItem(offer)?.estimatedValue ?? null
-}
-
-function targetImage(offer: TradeOffer): string | null {
-  if (!offer.targetListing?.images?.length) return null
-  const m = offer.targetListing.images.find((i) => i.imageUrl)
-  return m ? listingService.mediaUrl(m.imageUrl) : null
-}
-
-// ── Labels ────────────────────────────────────────────────────────────────────
-const conditionLabels: Record<string, string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-}
-function conditionLabel(c: string) {
-  return conditionLabels[c] ?? c
-}
-
-function statusLabel(s: string): string {
-  const map: Record<string, string> = {
-    PENDING: 'Pending',
-    ACCEPTED: 'Accepted',
-    DECLINED: 'Declined',
-    WITHDRAWN: 'Withdrawn',
-    COMPLETED: 'Completed',
-    EXPIRED: 'Expired',
-  }
-  return map[s] ?? s
-}
-
-function statusClass(s: string): string {
-  const map: Record<string, string> = {
-    PENDING: 'bg-amber-100 text-amber-800',
-    ACCEPTED: 'bg-green-100 text-green-800',
-    DECLINED: 'bg-red-100 text-red-700',
-    WITHDRAWN: 'bg-surface-200 text-surface-600',
-    COMPLETED: 'bg-blue-100 text-blue-800',
-    EXPIRED: 'bg-surface-200 text-surface-500',
-  }
-  return map[s] ?? 'bg-surface-100 text-surface-700'
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
-}
-</script>

@@ -1,3 +1,62 @@
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+
+const form = reactive({ displayName: '', email: '', password: '' })
+const fieldErrors = reactive({ displayName: '', email: '', password: '' })
+const showPassword = ref(false)
+const successMessage = ref('')
+
+function validateField(field: keyof typeof form) {
+  switch (field) {
+    case 'displayName':
+      if (!form.displayName) fieldErrors.displayName = 'Display name is required.'
+      else if (form.displayName.length < 2)
+        fieldErrors.displayName = 'Must be at least 2 characters.'
+      else if (form.displayName.length > 50)
+        fieldErrors.displayName = 'Must be at most 50 characters.'
+      else fieldErrors.displayName = ''
+      break
+    case 'email':
+      if (!form.email) fieldErrors.email = 'Email address is required.'
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
+        fieldErrors.email = 'Please enter a valid email address.'
+      else fieldErrors.email = ''
+      break
+    case 'password':
+      if (!form.password) fieldErrors.password = 'Password is required.'
+      else if (form.password.length < 8)
+        fieldErrors.password = 'Password must be at least 8 characters.'
+      else fieldErrors.password = ''
+      break
+  }
+}
+
+function validateAll(): boolean {
+  validateField('displayName')
+  validateField('email')
+  validateField('password')
+  return !fieldErrors.displayName && !fieldErrors.email && !fieldErrors.password
+}
+
+async function handleSubmit() {
+  authStore.clearError()
+  if (!validateAll()) return
+  try {
+    const result = await authStore.register({
+      email: form.email,
+      password: form.password,
+      displayName: form.displayName,
+    })
+    successMessage.value = `Welcome, ${result.user.displayName}! Your account has been created.`
+  } catch {
+    // error surfaced via authStore.error
+  }
+}
+</script>
+
 <template>
   <div class="min-h-[70vh] flex items-center justify-center px-4">
     <div class="w-full max-w-md">
@@ -224,62 +283,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-
-const form = reactive({ displayName: '', email: '', password: '' })
-const fieldErrors = reactive({ displayName: '', email: '', password: '' })
-const showPassword = ref(false)
-const successMessage = ref('')
-
-function validateField(field: keyof typeof form) {
-  switch (field) {
-    case 'displayName':
-      if (!form.displayName) fieldErrors.displayName = 'Display name is required.'
-      else if (form.displayName.length < 2)
-        fieldErrors.displayName = 'Must be at least 2 characters.'
-      else if (form.displayName.length > 50)
-        fieldErrors.displayName = 'Must be at most 50 characters.'
-      else fieldErrors.displayName = ''
-      break
-    case 'email':
-      if (!form.email) fieldErrors.email = 'Email address is required.'
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
-        fieldErrors.email = 'Please enter a valid email address.'
-      else fieldErrors.email = ''
-      break
-    case 'password':
-      if (!form.password) fieldErrors.password = 'Password is required.'
-      else if (form.password.length < 8)
-        fieldErrors.password = 'Password must be at least 8 characters.'
-      else fieldErrors.password = ''
-      break
-  }
-}
-
-function validateAll(): boolean {
-  validateField('displayName')
-  validateField('email')
-  validateField('password')
-  return !fieldErrors.displayName && !fieldErrors.email && !fieldErrors.password
-}
-
-async function handleSubmit() {
-  authStore.clearError()
-  if (!validateAll()) return
-  try {
-    const result = await authStore.register({
-      email: form.email,
-      password: form.password,
-      displayName: form.displayName,
-    })
-    successMessage.value = `Welcome, ${result.user.displayName}! Your account has been created.`
-  } catch {
-    // error surfaced via authStore.error
-  }
-}
-</script>

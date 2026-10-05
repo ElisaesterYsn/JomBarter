@@ -1,3 +1,72 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useListingStore } from '@/stores/listing'
+import listingService, { type Listing } from '@/services/listingService'
+
+const listingStore = useListingStore()
+
+onMounted(() => listingStore.fetchMyListings())
+
+// ── Media helpers ─────────────────────────────────────────────────────────────
+function firstImage(listing: Listing): string | null {
+  const item = listing.images.find((m) => m.imageUrl)
+  return item ? listingService.mediaUrl(item.imageUrl) : null
+}
+
+// ── Labels ────────────────────────────────────────────────────────────────────
+const conditionLabels: Record<string, string> = {
+  NEW: 'New',
+  LIKE_NEW: 'Like New',
+  GOOD: 'Good',
+  FAIR: 'Fair',
+  POOR: 'Poor',
+}
+function conditionLabel(c: string) {
+  return conditionLabels[c] ?? c
+}
+
+function statusClass(status: string): string {
+  const map: Record<string, string> = {
+    DRAFT: 'bg-surface-200 text-surface-700',
+    ACTIVE: 'bg-green-100 text-green-800',
+    TRADED: 'bg-primary-100 text-primary-800',
+    ARCHIVED: 'bg-amber-100 text-amber-800',
+    REMOVED: 'bg-red-100 text-red-700',
+  }
+  return map[status] ?? 'bg-surface-200 text-surface-700'
+}
+
+// ── Publish / unpublish ───────────────────────────────────────────────────────
+async function handlePublish(id: string) {
+  await listingStore.publish(id)
+}
+async function handleUnpublish(id: string) {
+  await listingStore.unpublish(id)
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+const deleteTarget = ref<{ id: string; title: string } | null>(null)
+function confirmDelete(id: string, title: string) {
+  deleteTarget.value = { id, title }
+}
+async function handleDelete() {
+  if (!deleteTarget.value) return
+  await listingStore.remove(deleteTarget.value.id)
+  deleteTarget.value = null
+}
+
+// ── Mark as Traded ────────────────────────────────────────────────────────────
+const tradedTarget = ref<{ id: string; title: string } | null>(null)
+function confirmMarkTraded(id: string, title: string) {
+  tradedTarget.value = { id, title }
+}
+async function handleMarkTraded() {
+  if (!tradedTarget.value) return
+  await listingStore.markAsTraded(tradedTarget.value.id)
+  tradedTarget.value = null
+}
+</script>
+
 <template>
   <div class="max-w-5xl mx-auto space-y-6">
     <!-- Page header -->
@@ -123,122 +192,95 @@
               class="w-full h-full object-cover"
             />
           </template>
-          <template v-else>
-            <div class="w-full h-full flex items-center justify-center text-surface-400">
-              <svg
-                class="w-10 h-10"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="1.5"
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-          </template>
+          <div v-else class="w-full h-full flex items-center justify-center">
+            <svg
+              class="w-12 h-12 text-surface-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+
           <!-- Status badge -->
           <span
-            class="absolute top-2 right-2 text-xs font-semibold px-2 py-0.5 rounded-full"
             :class="statusClass(listing.status)"
+            class="absolute top-2 right-2 px-2.5 py-1 text-xs font-semibold rounded-full"
           >
             {{ listing.status }}
           </span>
         </div>
 
-        <!-- Info -->
-        <div class="flex-1">
-          <h3 class="font-semibold text-surface-800 leading-snug line-clamp-2">
-            {{ listing.title }}
-          </h3>
-          <p class="mt-1 text-xs text-surface-500 line-clamp-2">{{ listing.description }}</p>
-          <div class="mt-2 flex items-center gap-2 flex-wrap">
-            <span
-              class="inline-flex items-center text-xs bg-surface-100 text-surface-600 px-2 py-0.5 rounded-full font-medium"
-            >
-              {{ conditionLabel(listing.condition) }}
-            </span>
-            <span
-              v-if="listing.location"
-              class="inline-flex items-center text-xs text-surface-400 gap-1"
-            >
-              <svg
-                class="w-3 h-3"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              {{ listing.location }}
-            </span>
+        <!-- Content -->
+        <div class="flex-1 space-y-2">
+          <h3 class="font-semibold text-surface-800 line-clamp-1">{{ listing.title }}</h3>
+          <p class="text-sm text-surface-500 line-clamp-2">
+            {{ listing.description || 'No description' }}
+          </p>
+          <div class="flex items-center gap-2 text-xs text-surface-500">
+            <span class="px-2 py-0.5 bg-surface-100 rounded">{{ listing.category?.name }}</span>
+            <span>•</span>
+            <span>{{ conditionLabel(listing.condition) }}</span>
           </div>
         </div>
 
         <!-- Actions -->
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-surface-100">
-          <!-- View (active only) -->
+        <div class="flex items-center gap-2 pt-2 border-t border-surface-100">
           <router-link
-            v-if="listing.status === 'ACTIVE'"
             :to="`/listings/${listing.id}`"
-            class="text-xs px-3 py-1.5 rounded-lg text-primary-600 hover:bg-primary-50 transition border border-primary-200 font-medium"
+            class="text-sm text-primary-700 hover:text-primary-800 font-medium"
           >
             View
           </router-link>
-
-          <!-- Publish -->
-          <button
-            v-if="listing.status === 'DRAFT'"
-            class="btn-secondary text-xs px-3 py-1.5"
-            :disabled="listingStore.submitting"
-            @click="handlePublish(listing.id)"
-          >
-            Publish
-          </button>
-
-          <!-- Unpublish -->
-          <button
-            v-else-if="listing.status === 'ACTIVE'"
-            class="btn-secondary text-xs px-3 py-1.5"
-            :disabled="listingStore.submitting"
-            @click="handleUnpublish(listing.id)"
-          >
-            Unpublish
-          </button>
-
-          <!-- Mark as Traded (active only) -->
-          <button
-            v-if="listing.status === 'ACTIVE'"
-            class="text-xs px-3 py-1.5 rounded-lg text-amber-700 hover:bg-amber-50 transition border border-amber-200 font-medium"
-            :disabled="listingStore.submitting"
-            @click="confirmMarkTraded(listing.id, listing.title)"
-          >
-            Mark Traded
-          </button>
-
-          <!-- Edit (draft or active) -->
+          <span class="text-surface-300">•</span>
           <router-link
-            v-if="['DRAFT', 'ACTIVE'].includes(listing.status)"
             :to="`/my-listings/${listing.id}/edit`"
-            class="btn-secondary text-xs px-3 py-1.5 text-center"
+            class="text-sm text-primary-700 hover:text-primary-800 font-medium"
           >
             Edit
           </router-link>
 
-          <!-- Delete -->
+          <!-- Publish/Unpublish -->
+          <template v-if="listing.status === 'DRAFT'">
+            <span class="text-surface-300">•</span>
+            <button
+              class="text-sm text-green-700 hover:text-green-800 font-medium"
+              @click="handlePublish(listing.id)"
+            >
+              Publish
+            </button>
+          </template>
+          <template v-else-if="listing.status === 'ACTIVE'">
+            <span class="text-surface-300">•</span>
+            <button
+              class="text-sm text-amber-700 hover:text-amber-800 font-medium"
+              @click="handleUnpublish(listing.id)"
+            >
+              Unpublish
+            </button>
+          </template>
+
+          <!-- Mark as Traded -->
+          <template v-if="listing.status === 'ACTIVE'">
+            <span class="text-surface-300">•</span>
+            <button
+              class="text-sm text-primary-700 hover:text-primary-800 font-medium"
+              @click="confirmMarkTraded(listing.id, listing.title)"
+            >
+              Mark Traded
+            </button>
+          </template>
+
+          <span class="text-surface-300 ml-auto">•</span>
           <button
-            class="text-xs px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 transition border border-red-200"
-            :disabled="listingStore.submitting"
+            class="text-sm text-red-600 hover:text-red-700 font-medium"
             @click="confirmDelete(listing.id, listing.title)"
           >
             Delete
@@ -247,129 +289,48 @@
       </div>
     </div>
 
-    <!-- ── Delete confirmation modal ── -->
-    <div
-      v-if="deleteTarget"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div class="card w-full max-w-sm space-y-4">
-        <h2 class="text-lg font-semibold text-surface-800">Delete listing?</h2>
-        <p class="text-sm text-surface-600">
-          "<span class="font-medium">{{ deleteTarget.title }}</span
-          >" will be permanently deleted along with all its media.
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button class="btn-secondary text-sm px-4 py-2" @click="deleteTarget = null">
-            Cancel
-          </button>
-          <button
-            class="text-sm px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition disabled:opacity-60"
-            :disabled="listingStore.submitting"
-            @click="handleDelete"
-          >
-            {{ listingStore.submitting ? 'Deleting…' : 'Yes, delete' }}
-          </button>
+    <!-- Delete confirmation modal -->
+    <Teleport to="body">
+      <div
+        v-if="deleteTarget"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+        @click.self="deleteTarget = null"
+      >
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+          <h3 class="text-lg font-semibold text-surface-800">Delete listing?</h3>
+          <p class="text-sm text-surface-600">
+            Are you sure you want to delete <strong>{{ deleteTarget.title }}</strong
+            >? This action cannot be undone.
+          </p>
+          <div class="flex gap-3 justify-end">
+            <button class="btn-secondary px-4 py-2" @click="deleteTarget = null">Cancel</button>
+            <button class="btn-primary bg-red-600 hover:bg-red-700 px-4 py-2" @click="handleDelete">
+              Delete
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
 
-    <!-- ── Mark as Traded confirmation modal ── -->
-    <div
-      v-if="tradedTarget"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div class="card w-full max-w-sm space-y-4">
-        <h2 class="text-lg font-semibold text-surface-800">Mark as Traded?</h2>
-        <p class="text-sm text-surface-600">
-          "<span class="font-medium">{{ tradedTarget.title }}</span
-          >" will be moved out of the active marketplace. This cannot be undone easily.
-        </p>
-        <div class="flex gap-3 justify-end">
-          <button class="btn-secondary text-sm px-4 py-2" @click="tradedTarget = null">
-            Cancel
-          </button>
-          <button
-            class="text-sm px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition disabled:opacity-60"
-            :disabled="listingStore.submitting"
-            @click="handleMarkTraded"
-          >
-            {{ listingStore.submitting ? 'Updating…' : 'Yes, mark as traded' }}
-          </button>
+    <!-- Mark as Traded confirmation modal -->
+    <Teleport to="body">
+      <div
+        v-if="tradedTarget"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+        @click.self="tradedTarget = null"
+      >
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+          <h3 class="text-lg font-semibold text-surface-800">Mark as traded?</h3>
+          <p class="text-sm text-surface-600">
+            Are you sure <strong>{{ tradedTarget.title }}</strong> has been traded? This will mark
+            it as unavailable.
+          </p>
+          <div class="flex gap-3 justify-end">
+            <button class="btn-secondary px-4 py-2" @click="tradedTarget = null">Cancel</button>
+            <button class="btn-primary px-4 py-2" @click="handleMarkTraded">Confirm</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useListingStore } from '@/stores/listing'
-import listingService, { type Listing } from '@/services/listingService'
-
-const listingStore = useListingStore()
-
-onMounted(() => listingStore.fetchMyListings())
-
-// ── Media helpers ─────────────────────────────────────────────────────────────
-function firstImage(listing: Listing): string | null {
-  const item = listing.images.find((m) => m.imageUrl)
-  return item ? listingService.mediaUrl(item.imageUrl) : null
-}
-
-// ── Labels ────────────────────────────────────────────────────────────────────
-const conditionLabels: Record<string, string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-}
-function conditionLabel(c: string) {
-  return conditionLabels[c] ?? c
-}
-
-function statusClass(status: string): string {
-  const map: Record<string, string> = {
-    DRAFT: 'bg-surface-200 text-surface-700',
-    ACTIVE: 'bg-green-100 text-green-800',
-    TRADED: 'bg-primary-100 text-primary-800',
-    ARCHIVED: 'bg-amber-100 text-amber-800',
-    REMOVED: 'bg-red-100 text-red-700',
-  }
-  return map[status] ?? 'bg-surface-200 text-surface-700'
-}
-
-// ── Publish / unpublish ───────────────────────────────────────────────────────
-async function handlePublish(id: string) {
-  await listingStore.publish(id)
-}
-async function handleUnpublish(id: string) {
-  await listingStore.unpublish(id)
-}
-
-// ── Delete ────────────────────────────────────────────────────────────────────
-const deleteTarget = ref<{ id: string; title: string } | null>(null)
-function confirmDelete(id: string, title: string) {
-  deleteTarget.value = { id, title }
-}
-async function handleDelete() {
-  if (!deleteTarget.value) return
-  await listingStore.remove(deleteTarget.value.id)
-  deleteTarget.value = null
-}
-
-// ── Mark as Traded ────────────────────────────────────────────────────────────
-const tradedTarget = ref<{ id: string; title: string } | null>(null)
-function confirmMarkTraded(id: string, title: string) {
-  tradedTarget.value = { id, title }
-}
-async function handleMarkTraded() {
-  if (!tradedTarget.value) return
-  await listingStore.markAsTraded(tradedTarget.value.id)
-  tradedTarget.value = null
-}
-</script>

@@ -1,3 +1,50 @@
+<script setup lang="ts">
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+const form = reactive({ email: '', password: '' })
+const fieldErrors = reactive({ email: '', password: '' })
+const showPassword = ref(false)
+
+function validateField(field: keyof typeof form) {
+  switch (field) {
+    case 'email':
+      if (!form.email) {
+        fieldErrors.email = 'Email address is required.'
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        fieldErrors.email = 'Please enter a valid email address.'
+      } else {
+        fieldErrors.email = ''
+      }
+      break
+    case 'password':
+      fieldErrors.password = form.password ? '' : 'Password is required.'
+      break
+  }
+}
+
+function validateAll(): boolean {
+  validateField('email')
+  validateField('password')
+  return !fieldErrors.email && !fieldErrors.password
+}
+
+async function handleSubmit() {
+  authStore.clearError()
+  if (!validateAll()) return
+  try {
+    await authStore.login({ email: form.email, password: form.password })
+    router.push('/')
+  } catch {
+    // error surfaced via authStore.error
+  }
+}
+</script>
+
 <template>
   <div class="min-h-[70vh] flex items-center justify-center px-4">
     <div class="w-full max-w-md">
@@ -168,50 +215,3 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-const router = useRouter()
-
-const form = reactive({ email: '', password: '' })
-const fieldErrors = reactive({ email: '', password: '' })
-const showPassword = ref(false)
-
-function validateField(field: keyof typeof form) {
-  switch (field) {
-    case 'email':
-      if (!form.email) {
-        fieldErrors.email = 'Email address is required.'
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-        fieldErrors.email = 'Please enter a valid email address.'
-      } else {
-        fieldErrors.email = ''
-      }
-      break
-    case 'password':
-      fieldErrors.password = form.password ? '' : 'Password is required.'
-      break
-  }
-}
-
-function validateAll(): boolean {
-  validateField('email')
-  validateField('password')
-  return !fieldErrors.email && !fieldErrors.password
-}
-
-async function handleSubmit() {
-  authStore.clearError()
-  if (!validateAll()) return
-  try {
-    await authStore.login({ email: form.email, password: form.password })
-    router.push('/')
-  } catch {
-    // error surfaced via authStore.error
-  }
-}
-</script>

@@ -1,3 +1,166 @@
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import listingService, {
+  type FeedListing,
+  type FeedResponse,
+  type Category,
+} from '@/services/listingService'
+import { avatarUrl } from '@/services/userService'
+
+const authStore = useAuthStore()
+
+// ── Feed state ────────────────────────────────────────────────────────────────
+const feedItems = ref<FeedListing[]>([])
+const pagination = ref<FeedResponse['pagination'] | null>(null)
+const feedLoading = ref(false)
+const feedError = ref<string | null>(null)
+
+async function loadFeed(page = 1) {
+  feedLoading.value = true
+  feedError.value = null
+  try {
+    const data = await listingService.getPublicFeed(page, 12)
+    feedItems.value = data.listings
+    pagination.value = data.pagination
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  } catch {
+    feedError.value = 'Could not load listings. Please try again.'
+  } finally {
+    feedLoading.value = false
+  }
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+const categories = ref<Category[]>([])
+const categoriesLoading = ref(true)
+const selectedCategory = ref<string | null>(null)
+
+async function loadCategories() {
+  try {
+    categories.value = await listingService.getCategories()
+  } catch {
+    // non-fatal — categories are cosmetic on the home page
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
+function selectCategory(id: string | null) {
+  selectedCategory.value = id
+}
+
+// ── Search (UI-ready, backend filtering not yet implemented) ──────────────────
+const searchQuery = ref('')
+
+function handleSearch() {
+  // Placeholder — full-text search will be wired when the search API is available.
+  // For now, client-side filter is applied via displayedItems computed.
+}
+
+function clearSearch() {
+  searchQuery.value = ''
+}
+
+// ── Displayed items — client-side filter by category + search query ───────────
+const displayedItems = computed(() => {
+  let items = feedItems.value
+
+  if (selectedCategory.value) {
+    items = items.filter((i) => i.categoryId === selectedCategory.value)
+  }
+
+  const q = searchQuery.value.trim().toLowerCase()
+  if (q) {
+    items = items.filter(
+      (i) =>
+        i.title.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        (i.lookingFor ?? '').toLowerCase().includes(q),
+    )
+  }
+
+  return items
+})
+
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+onMounted(() => {
+  loadFeed()
+  if (authStore.isAuthenticated) loadCategories()
+})
+
+watch(
+  () => authStore.isAuthenticated,
+  (authed) => {
+    loadFeed()
+    if (authed) loadCategories()
+  },
+)
+
+// ── Image error handler — replaces broken img with placeholder ────────────────
+function handleImageError(e: Event) {
+  const img = e.target as HTMLImageElement
+  img.style.display = 'none'
+  const parent = img.parentElement
+  if (parent && !parent.querySelector('.img-fallback')) {
+    const fallback = document.createElement('div')
+    fallback.className =
+      'img-fallback w-full h-full flex flex-col items-center justify-center text-surface-300'
+    fallback.innerHTML = `
+      <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span style="font-size:11px;color:#b5a994">No photo</span>`
+    parent.appendChild(fallback)
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function firstImage(item: FeedListing): string | null {
+  const m = item.images.find((i) => i.imageUrl)
+  return m ? listingService.mediaUrl(m.imageUrl) : null
+}
+
+function feedItemAvatar(item: FeedListing): string | null {
+  return avatarUrl(item.user.profileImage)
+}
+
+const conditionLabels: Record<string, string> = {
+  NEW: 'New',
+  LIKE_NEW: 'Like New',
+  GOOD: 'Good',
+  FAIR: 'Fair',
+  POOR: 'Poor',
+}
+function conditionLabel(c: string) {
+  return conditionLabels[c] ?? c
+}
+
+function conditionClass(c: string): string {
+  const map: Record<string, string> = {
+    NEW: 'bg-green-100 text-green-800',
+    LIKE_NEW: 'bg-emerald-100 text-emerald-800',
+    GOOD: 'bg-primary-100 text-primary-800',
+    FAIR: 'bg-amber-100 text-amber-800',
+    POOR: 'bg-red-100 text-red-700',
+  }
+  return map[c] ?? 'bg-surface-100 text-surface-700'
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString()
+}
+</script>
+
 <template>
   <div>
     <!-- ══════════════════════════════════════════════════════════════════════
@@ -420,422 +583,17 @@
     </template>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         GUEST VIEW
+         GUEST VIEW (Unauthenticated)
     ═══════════════════════════════════════════════════════════════════════ -->
     <template v-else>
-      <div class="max-w-6xl mx-auto space-y-8 px-0">
-        <!-- Hero banner -->
-        <div
-          class="text-center py-12 bg-gradient-to-br from-primary-800 via-primary-700 to-amber-600 text-white rounded-2xl shadow-lg px-6"
-        >
-          <h1 class="text-3xl font-bold mb-3 tracking-tight">Welcome to JomBarter</h1>
-          <p class="text-base text-amber-100 mb-6 max-w-sm mx-auto">
-            A community marketplace where you exchange items and services — no money needed.
-          </p>
-          <div class="flex flex-wrap justify-center gap-3">
-            <router-link
-              to="/register"
-              class="bg-white text-primary-700 hover:bg-amber-50 font-semibold py-2.5 px-6 rounded-lg transition shadow text-sm"
-            >
-              Create Free Account
-            </router-link>
-            <router-link
-              to="/login"
-              class="border-2 border-white/70 text-white hover:bg-white/10 font-medium py-2.5 px-6 rounded-lg transition text-sm"
-            >
-              Sign In
-            </router-link>
-          </div>
-        </div>
-
-        <!-- Lock nudge -->
-        <div
-          class="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800"
-        >
-          <svg
-            class="w-4 h-4 shrink-0 text-amber-500"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-          >
-            <path
-              fill-rule="evenodd"
-              d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-              clip-rule="evenodd"
-            />
-          </svg>
-          <span>
-            Browsing as guest.
-            <router-link to="/register" class="font-semibold underline hover:no-underline"
-              >Create a free account</router-link
-            >
-            to see full details and propose a barter.
-          </span>
-        </div>
-
-        <!-- Latest listings heading -->
-        <div class="flex items-center justify-between">
-          <h2 class="text-lg font-bold text-surface-800">Latest Barter Listings</h2>
-          <span v-if="pagination" class="text-xs text-surface-400">
-            {{ pagination.total }} listing{{ pagination.total === 1 ? '' : 's' }}
-          </span>
-        </div>
-
-        <!-- Loading -->
-        <div v-if="feedLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <div
-            v-for="n in 6"
-            :key="n"
-            class="rounded-2xl border border-surface-200 bg-white overflow-hidden animate-pulse"
-          >
-            <div class="aspect-[4/3] bg-surface-200"></div>
-            <div class="p-4 space-y-3">
-              <div class="h-4 bg-surface-200 rounded w-3/4"></div>
-              <div class="h-3 bg-surface-200 rounded w-1/2"></div>
-              <div class="h-3 bg-surface-200 rounded w-full"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Error -->
-        <div v-else-if="feedError" class="card text-center py-10">
-          <p class="text-surface-600 mb-4">{{ feedError }}</p>
-          <button class="btn-secondary px-5 py-2 text-sm" @click="loadFeed(1)">Try again</button>
-        </div>
-
-        <!-- Empty -->
-        <div v-else-if="!feedLoading && feedItems.length === 0" class="card text-center py-16">
-          <h2 class="text-lg font-semibold text-surface-800 mb-2">Nothing to barter yet</h2>
-          <p class="text-surface-500 text-sm mb-6">
-            Be the first to offer something to the community.
-          </p>
-          <router-link
-            to="/register"
-            class="btn-primary inline-flex items-center gap-2 px-6 py-2.5"
-          >
-            Join to start bartering
-          </router-link>
-        </div>
-
-        <!-- Guest listing grid -->
-        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <article
-            v-for="item in feedItems"
-            :key="item.id"
-            class="group rounded-2xl border border-surface-200 bg-white overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
-          >
-            <!-- Image -->
-            <div class="relative aspect-[4/3] bg-surface-100 overflow-hidden">
-              <img
-                v-if="firstImage(item)"
-                :src="firstImage(item)!"
-                :alt="item.title"
-                class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
-                loading="lazy"
-                @error="handleImageError"
-              />
-              <div
-                v-else
-                class="w-full h-full flex flex-col items-center justify-center text-surface-300"
-              >
-                <svg
-                  class="w-10 h-10 mb-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="1.5"
-                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-                <span class="text-xs text-surface-400">No photo</span>
-              </div>
-              <span
-                class="absolute top-2.5 left-2.5 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                :class="conditionClass(item.condition)"
-              >
-                {{ conditionLabel(item.condition) }}
-              </span>
-            </div>
-
-            <!-- Body -->
-            <div class="flex flex-col flex-1 p-4 gap-3">
-              <h3 class="font-semibold text-surface-800 text-sm leading-snug line-clamp-2">
-                {{ item.title }}
-              </h3>
-              <div v-if="item.location" class="flex items-center gap-1 text-xs text-surface-500">
-                <svg
-                  class="w-3.5 h-3.5 shrink-0 text-surface-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                {{ item.location }}
-              </div>
-
-              <!-- Barter preference (teaser for guest) -->
-              <div class="flex-1 relative">
-                <div
-                  class="bg-primary-50 border border-primary-100 rounded-lg px-3 py-2 select-none"
-                >
-                  <p
-                    class="text-[11px] font-semibold text-primary-700 uppercase tracking-wide mb-0.5"
-                  >
-                    Looking to trade for
-                  </p>
-                  <p class="text-xs text-primary-900/60 line-clamp-1 blur-[3px] italic">
-                    {{ item.lookingFor || 'Open to offers' }}
-                  </p>
-                </div>
-                <!-- Lock overlay -->
-                <div class="absolute inset-0 flex items-center justify-center rounded-lg">
-                  <router-link
-                    to="/register"
-                    class="flex items-center gap-1 text-[11px] font-semibold text-primary-700 bg-white/90 border border-primary-200 px-2.5 py-1 rounded-full shadow-sm hover:bg-primary-50 transition"
-                    aria-label="Sign up to see barter preference"
-                  >
-                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                      <path
-                        fill-rule="evenodd"
-                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                        clip-rule="evenodd"
-                      />
-                    </svg>
-                    Sign up to see
-                  </router-link>
-                </div>
-              </div>
-
-              <!-- Poster + CTA -->
-              <div class="flex items-center justify-between pt-2 border-t border-surface-100">
-                <div class="flex items-center gap-1.5 min-w-0">
-                  <div
-                    class="w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-[10px] font-bold uppercase shrink-0"
-                    aria-hidden="true"
-                  >
-                    {{ item.user.displayName.charAt(0) }}
-                  </div>
-                  <span class="text-xs text-surface-600 font-medium truncate">{{
-                    item.user.displayName
-                  }}</span>
-                  <span class="text-[11px] text-surface-400 shrink-0"
-                    >· {{ relativeTime(item.createdAt) }}</span
-                  >
-                </div>
-                <router-link
-                  to="/register"
-                  class="text-xs font-semibold text-primary-600 hover:text-primary-800 transition shrink-0 ml-2"
-                  aria-label="Sign up to see more details"
-                >
-                  Sign up →
-                </router-link>
-              </div>
-            </div>
-          </article>
-        </div>
-
-        <!-- Guest pagination -->
-        <div
-          v-if="pagination && pagination.totalPages > 1 && !feedLoading"
-          class="flex items-center justify-center gap-3 pt-4"
-        >
-          <button
-            class="btn-secondary text-sm px-4 py-2 disabled:opacity-40"
-            :disabled="!pagination.hasPrevPage || feedLoading"
-            @click="loadFeed(pagination!.page - 1)"
-          >
-            ← Newer
-          </button>
-          <span class="text-sm text-surface-500"
-            >Page {{ pagination.page }} of {{ pagination.totalPages }}</span
-          >
-          <button
-            class="btn-secondary text-sm px-4 py-2 disabled:opacity-40"
-            :disabled="!pagination.hasNextPage || feedLoading"
-            @click="loadFeed(pagination!.page + 1)"
-          >
-            Older →
-          </button>
-        </div>
+      <div class="max-w-4xl mx-auto text-center py-16">
+        <h1 class="text-3xl font-bold text-surface-800 mb-4">Welcome to JomBarter</h1>
+        <p class="text-surface-600 mb-8">Sign in to view and create barter listings</p>
+        <router-link to="/login" class="btn-primary inline-block px-6 py-3"> Sign In </router-link>
       </div>
     </template>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import listingService, {
-  type FeedListing,
-  type FeedResponse,
-  type Category,
-} from '@/services/listingService'
-import { avatarUrl } from '@/services/userService'
-
-const authStore = useAuthStore()
-
-// ── Feed state ────────────────────────────────────────────────────────────────
-const feedItems = ref<FeedListing[]>([])
-const pagination = ref<FeedResponse['pagination'] | null>(null)
-const feedLoading = ref(false)
-const feedError = ref<string | null>(null)
-
-async function loadFeed(page = 1) {
-  feedLoading.value = true
-  feedError.value = null
-  try {
-    const data = await listingService.getPublicFeed(page, 12)
-    feedItems.value = data.listings
-    pagination.value = data.pagination
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  } catch {
-    feedError.value = 'Could not load listings. Please try again.'
-  } finally {
-    feedLoading.value = false
-  }
-}
-
-// ── Categories ────────────────────────────────────────────────────────────────
-const categories = ref<Category[]>([])
-const categoriesLoading = ref(true)
-const selectedCategory = ref<string | null>(null)
-
-async function loadCategories() {
-  try {
-    categories.value = await listingService.getCategories()
-  } catch {
-    // non-fatal — categories are cosmetic on the home page
-  } finally {
-    categoriesLoading.value = false
-  }
-}
-
-function selectCategory(id: string | null) {
-  selectedCategory.value = id
-}
-
-// ── Search (UI-ready, backend filtering not yet implemented) ──────────────────
-const searchQuery = ref('')
-
-function handleSearch() {
-  // Placeholder — full-text search will be wired when the search API is available.
-  // For now, client-side filter is applied via displayedItems computed.
-}
-
-function clearSearch() {
-  searchQuery.value = ''
-}
-
-// ── Displayed items — client-side filter by category + search query ───────────
-const displayedItems = computed(() => {
-  let items = feedItems.value
-
-  if (selectedCategory.value) {
-    items = items.filter((i) => i.categoryId === selectedCategory.value)
-  }
-
-  const q = searchQuery.value.trim().toLowerCase()
-  if (q) {
-    items = items.filter(
-      (i) =>
-        i.title.toLowerCase().includes(q) ||
-        i.description.toLowerCase().includes(q) ||
-        (i.lookingFor ?? '').toLowerCase().includes(q),
-    )
-  }
-
-  return items
-})
-
-// ── Lifecycle ─────────────────────────────────────────────────────────────────
-onMounted(() => {
-  loadFeed()
-  if (authStore.isAuthenticated) loadCategories()
-})
-
-watch(
-  () => authStore.isAuthenticated,
-  (authed) => {
-    loadFeed()
-    if (authed) loadCategories()
-  },
-)
-
-// ── Image error handler — replaces broken img with placeholder ────────────────
-function handleImageError(e: Event) {
-  const img = e.target as HTMLImageElement
-  img.style.display = 'none'
-  const parent = img.parentElement
-  if (parent && !parent.querySelector('.img-fallback')) {
-    const fallback = document.createElement('div')
-    fallback.className =
-      'img-fallback w-full h-full flex flex-col items-center justify-center text-surface-300'
-    fallback.innerHTML = `
-      <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-      </svg>
-      <span style="font-size:11px;color:#b5a994">No photo</span>`
-    parent.appendChild(fallback)
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function firstImage(item: FeedListing): string | null {
-  const m = item.images.find((i) => i.imageUrl)
-  return m ? listingService.mediaUrl(m.imageUrl) : null
-}
-
-function feedItemAvatar(item: FeedListing): string | null {
-  return avatarUrl(item.user.profileImage)
-}
-
-const conditionLabels: Record<string, string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like New',
-  GOOD: 'Good',
-  FAIR: 'Fair',
-  POOR: 'Poor',
-}
-function conditionLabel(c: string) {
-  return conditionLabels[c] ?? c
-}
-
-function conditionClass(c: string): string {
-  const map: Record<string, string> = {
-    NEW: 'bg-green-100 text-green-800',
-    LIKE_NEW: 'bg-emerald-100 text-emerald-800',
-    GOOD: 'bg-primary-100 text-primary-800',
-    FAIR: 'bg-amber-100 text-amber-800',
-    POOR: 'bg-red-100 text-red-700',
-  }
-  return map[c] ?? 'bg-surface-100 text-surface-700'
-}
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  return new Date(iso).toLocaleDateString()
-}
-</script>
 
 <style scoped>
 /* Category chip base */
