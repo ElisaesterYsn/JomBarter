@@ -52,12 +52,19 @@ export class ListingsService {
 
   // ── Public feed ───────────────────────────────────────────────────────────
 
-  async findPublicFeed(page: number, limit: number, categoryId?: string, excludeId?: string) {
+  async findPublicFeed(
+    page: number,
+    limit: number,
+    categoryId?: string,
+    excludeId?: string,
+    userId?: string,
+  ) {
     const skip = (page - 1) * limit;
     const where = {
       status: 'ACTIVE',
       ...(categoryId && { categoryId }),
       ...(excludeId && { id: { not: excludeId } }),
+      ...(userId && { userId }),
     };
     const [listings, total] = await Promise.all([
       this.prisma.listing.findMany({
@@ -207,7 +214,7 @@ export class ListingsService {
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
         category: { select: { id: true, name: true, slug: true } },
-        user: { select: { id: true, displayName: true, username: true } },
+        user: { select: { id: true, displayName: true, username: true, profileImage: true } },
       },
     });
   }

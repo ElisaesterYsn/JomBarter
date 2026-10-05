@@ -131,10 +131,18 @@ const listingService = {
   },
 
   // ── Feed ─────────────────────────────────────────────────────────────────────
-  async getPublicFeed(page = 1, limit = 12): Promise<FeedResponse> {
-    const res = await apiService.get<{ data: FeedResponse }>(
-      `/listings?page=${page}&limit=${limit}`,
-    )
+  async getPublicFeed(
+    page = 1,
+    limit = 12,
+    categoryId?: string,
+    excludeId?: string,
+    userId?: string,
+  ): Promise<FeedResponse> {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) })
+    if (categoryId) params.set('categoryId', categoryId)
+    if (excludeId) params.set('excludeId', excludeId)
+    if (userId) params.set('userId', userId)
+    const res = await apiService.get<{ data: FeedResponse }>(`/listings?${params.toString()}`)
     return res.data.data
   },
 

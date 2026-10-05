@@ -20,6 +20,7 @@ export interface RegisteredUser {
   email: string
   username: string
   displayName: string
+  profileImage: string | null
   role: string
   createdAt: string
 }

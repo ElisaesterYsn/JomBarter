@@ -354,20 +354,32 @@
 
                 <!-- User info + time + CTA -->
                 <div class="flex items-center justify-between pt-2 border-t border-surface-100">
-                  <div class="flex items-center gap-2 min-w-0">
+                  <router-link
+                    :to="`/users/${item.user.username}`"
+                    class="flex items-center gap-2 min-w-0 flex-1 group"
+                  >
                     <div
-                      class="w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-[10px] font-bold uppercase shrink-0"
+                      class="w-6 h-6 rounded-full bg-primary-600 text-white flex items-center justify-center text-[10px] font-bold uppercase shrink-0 overflow-hidden"
                       aria-hidden="true"
                     >
-                      {{ item.user.displayName.charAt(0) }}
+                      <img
+                        v-if="feedItemAvatar(item)"
+                        :src="feedItemAvatar(item)!"
+                        :alt="item.user.displayName"
+                        class="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      <span v-else>{{ item.user.displayName.charAt(0) }}</span>
                     </div>
-                    <span class="text-xs text-surface-600 font-medium truncate">
+                    <span
+                      class="text-xs text-surface-600 font-medium truncate group-hover:text-primary-700 transition"
+                    >
                       {{ item.user.displayName }}
                     </span>
                     <span class="text-[11px] text-surface-400 shrink-0">
                       · {{ relativeTime(item.createdAt) }}
                     </span>
-                  </div>
+                  </router-link>
                   <router-link
                     :to="`/listings/${item.id}`"
                     class="text-xs font-semibold text-primary-600 hover:text-primary-800 transition shrink-0 ml-2"
@@ -670,6 +682,7 @@ import listingService, {
   type FeedResponse,
   type Category,
 } from '@/services/listingService'
+import { avatarUrl } from '@/services/userService'
 
 const authStore = useAuthStore()
 
@@ -783,6 +796,10 @@ function handleImageError(e: Event) {
 function firstImage(item: FeedListing): string | null {
   const m = item.images.find((i) => i.imageUrl)
   return m ? listingService.mediaUrl(m.imageUrl) : null
+}
+
+function feedItemAvatar(item: FeedListing): string | null {
+  return avatarUrl(item.user.profileImage)
 }
 
 const conditionLabels: Record<string, string> = {

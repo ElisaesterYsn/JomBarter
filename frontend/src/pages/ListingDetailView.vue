@@ -392,42 +392,69 @@
             <h2 class="text-xs font-bold text-surface-400 uppercase tracking-widest mb-3">
               Listed By
             </h2>
-            <div class="flex items-center gap-3">
+            <router-link
+              v-if="listing.user"
+              :to="`/users/${listing.user.username}`"
+              class="flex items-center gap-3 hover:bg-surface-50 rounded-lg p-2 -m-2 transition"
+            >
               <div
-                class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold uppercase shrink-0"
+                class="w-10 h-10 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-bold uppercase shrink-0 overflow-hidden"
                 aria-hidden="true"
               >
-                {{ listing.user?.displayName?.charAt(0) ?? '?' }}
+                <img
+                  v-if="ownerAvatarUrl"
+                  :src="ownerAvatarUrl"
+                  :alt="listing.user.displayName"
+                  class="w-full h-full object-cover"
+                  @error="ownerAvatarError = true"
+                />
+                <span v-else>{{ listing.user.displayName.charAt(0) }}</span>
               </div>
-              <div class="min-w-0">
-                <p class="text-sm font-semibold text-surface-800 truncate">
-                  {{ listing.user?.displayName }}
+              <div class="min-w-0 flex-1">
+                <p
+                  class="text-sm font-semibold text-surface-800 truncate hover:text-primary-700 transition"
+                >
+                  {{ listing.user.displayName }}
                 </p>
-                <p v-if="listing.user?.username" class="text-xs text-surface-400 truncate">
+                <p v-if="listing.user.username" class="text-xs text-surface-400 truncate">
                   @{{ listing.user.username }}
                 </p>
-                <p
-                  v-if="listing.location"
-                  class="text-xs text-surface-400 flex items-center gap-0.5 mt-0.5"
-                >
-                  <svg
-                    class="w-3 h-3 shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                  {{ listing.location }}
-                </p>
               </div>
-            </div>
+              <svg
+                class="w-4 h-4 text-surface-300 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </router-link>
+            <p
+              v-if="listing.location"
+              class="text-xs text-surface-400 flex items-center gap-0.5 mt-3 pt-3 border-t border-surface-100"
+            >
+              <svg
+                class="w-3 h-3 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              {{ listing.location }}
+            </p>
           </div>
         </div>
         <!-- end right column -->
@@ -908,6 +935,7 @@ import listingService, {
   type Category,
   parseCommaList,
 } from '@/services/listingService'
+import { avatarUrl } from '@/services/userService'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -917,11 +945,17 @@ const id = route.params.id as string
 
 // ── Listing data ──────────────────────────────────────────────────────────────
 const listing = ref<Listing | null>(null)
+const ownerAvatarError = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const mediaIndex = ref(0)
 const lightboxOpen = ref(false)
 const currentMedia = computed(() => listing.value?.images[mediaIndex.value] ?? null)
+
+const ownerAvatarUrl = computed(() => {
+  if (ownerAvatarError.value) return null
+  return avatarUrl(listing.value?.user?.profileImage)
+})
 
 async function load() {
   loading.value = true

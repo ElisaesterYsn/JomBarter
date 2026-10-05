@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string
   username: string
   displayName: string
+  profileImage: string | null
   role: string
   createdAt: string
 }
@@ -80,6 +81,17 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
+  /**
+   * Patch selected fields on the in-memory auth user and persist to localStorage.
+   * Called by profileStore after a successful profile update so the navbar avatar
+   * and display name update immediately without a full re-login.
+   */
+  function updateUser(patch: Partial<Pick<AuthUser, 'displayName' | 'username' | 'profileImage'>>) {
+    if (!user.value) return
+    user.value = { ...user.value, ...patch }
+    localStorage.setItem('auth_user', JSON.stringify(user.value))
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   function clearSession() {
@@ -113,5 +125,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     clearError,
+    updateUser,
   }
 })

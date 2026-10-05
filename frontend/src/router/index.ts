@@ -63,6 +63,18 @@ const router = createRouter({
       component: () => import('@/pages/OffersView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/profile',
+      name: 'my-profile',
+      component: () => import('@/pages/MyProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/users/:username',
+      name: 'public-profile',
+      component: () => import('@/pages/PublicProfileView.vue'),
+      // public — anyone can view
+    },
   ],
 })
 

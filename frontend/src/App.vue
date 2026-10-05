@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, RouterView } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useOfferStore } from '@/stores/offer'
+import { avatarUrl } from '@/services/userService'
 import jbLogo from '@/assets/jb-logo.png'
 const authStore = useAuthStore()
 const offerStore = useOfferStore()
@@ -10,10 +11,16 @@ const router = useRouter()
 
 const userMenuOpen = ref(false)
 const userMenuRef = ref<HTMLElement | null>(null)
+const avatarError = ref(false)
 
 const pendingReceivedCount = computed(
   () => offerStore.received.filter((o) => o.status === 'PENDING').length,
 )
+
+const userAvatarUrl = computed(() => {
+  if (avatarError.value) return null
+  return avatarUrl(authStore.user?.profileImage)
+})
 
 onMounted(() => {
   authStore.init()
@@ -128,10 +135,17 @@ function handleLogout() {
                   @click="userMenuOpen = !userMenuOpen"
                 >
                   <span
-                    class="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-semibold uppercase select-none"
+                    class="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-semibold uppercase select-none overflow-hidden"
                     aria-hidden="true"
                   >
-                    {{ authStore.user?.displayName?.charAt(0) ?? '?' }}
+                    <img
+                      v-if="userAvatarUrl"
+                      :src="userAvatarUrl"
+                      :alt="authStore.user?.displayName"
+                      class="w-full h-full object-cover"
+                      @error="avatarError = true"
+                    />
+                    <span v-else>{{ authStore.user?.displayName?.charAt(0) ?? '?' }}</span>
                   </span>
                   <span class="hidden sm:block max-w-[120px] truncate">
                     {{ authStore.user?.displayName }}
@@ -163,6 +177,28 @@ function handleLogout() {
                       {{ authStore.user?.email }}
                     </p>
                   </div>
+                  <router-link
+                    to="/profile"
+                    role="menuitem"
+                    class="flex items-center gap-2 px-4 py-2 text-sm text-surface-700 hover:bg-surface-50 transition"
+                    @click="userMenuOpen = false"
+                  >
+                    <svg
+                      class="w-4 h-4 text-surface-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                    My Profile
+                  </router-link>
                   <router-link
                     to="/my-listings"
                     role="menuitem"

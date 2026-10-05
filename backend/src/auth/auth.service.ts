@@ -20,6 +20,7 @@ export interface SafeUser {
   email: string;
   username: string;
   displayName: string;
+  profileImage: string | null;
   role: string;
   createdAt: Date;
 }
@@ -124,6 +125,7 @@ export class AuthService {
     email: string;
     username: string;
     displayName: string;
+    profileImage: string | null;
     role: string;
     createdAt: Date;
   }): SafeUser {
@@ -132,6 +134,7 @@ export class AuthService {
       email: user.email,
       username: user.username,
       displayName: user.displayName,
+      profileImage: user.profileImage,
       role: user.role,
       createdAt: user.createdAt,
     };
