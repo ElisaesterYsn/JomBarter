@@ -1,30 +1,37 @@
 import { BadRequestException } from '@nestjs/common';
-import { diskStorage } from 'multer';
-import * as path from 'path';
-import * as fs from 'fs';
-import * as crypto from 'crypto';
+import { v2 as cloudinary } from 'cloudinary';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-// Ensure uploads directory exists at startup
-const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const;
 
 export const MAX_IMAGE_SIZE_MB = 10;
 
-export const multerStorage = diskStorage({
-  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${crypto.randomUUID()}${ext}`);
-  },
+export const listingImageStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async () => ({
+    folder: 'jombarter/listings',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    resource_type: 'image' as 'image',
+  }),
+});
+
+export const avatarStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async () => ({
+    folder: 'jombarter/avatars',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    resource_type: 'image' as 'image',
+  }),
 });
 
 /**
  * Rejects anything that is not an allowed image MIME type.
- * Videos are no longer accepted in listing uploads.
  */
 export function mediaFileFilter(
   _req: any,

@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
-import { mediaFileFilter, multerStorage, MAX_IMAGE_SIZE_MB } from '../listings/multer.config';
+import { mediaFileFilter, avatarStorage, MAX_IMAGE_SIZE_MB } from '../listings/multer.config';
 
 interface JwtUser {
   id: string;
@@ -96,7 +96,7 @@ export class UsersController {
   @ApiOperation({ summary: "Upload or replace the authenticated user's avatar" })
   @UseInterceptors(
     FileInterceptor('avatar', {
-      storage: multerStorage,
+      storage: avatarStorage,
       fileFilter: mediaFileFilter,
       limits: { fileSize: MAX_IMAGE_SIZE_MB * 1024 * 1024 },
     }),
@@ -105,7 +105,7 @@ export class UsersController {
     if (!file) {
       return { message: 'No file uploaded' };
     }
-    const user = await this.usersService.updateAvatar(jwtUser.id, file.filename);
+    const user = await this.usersService.updateAvatar(jwtUser.id, file.path);
     return { message: 'Avatar updated', user: toPrivateProfile(user) };
   }
 

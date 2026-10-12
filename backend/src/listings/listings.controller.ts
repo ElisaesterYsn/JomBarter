@@ -29,7 +29,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
-import { mediaFileFilter, multerStorage, MAX_IMAGE_SIZE_MB } from './multer.config';
+import { mediaFileFilter, listingImageStorage, MAX_IMAGE_SIZE_MB } from './multer.config';
 
 interface JwtUser {
   id: string;
@@ -41,7 +41,7 @@ interface JwtUser {
 
 /** Multer interceptor: images only, max 8 files, 10 MB each */
 const IMAGES_INTERCEPTOR = FilesInterceptor('images', 8, {
-  storage: multerStorage,
+  storage: listingImageStorage,
   fileFilter: mediaFileFilter,
   limits: { fileSize: MAX_IMAGE_SIZE_MB * 1024 * 1024 },
 });

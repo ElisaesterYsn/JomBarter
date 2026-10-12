@@ -161,8 +161,11 @@ export class UsersService {
   }
 
   private deleteFileIfExists(filename: string) {
+    // Cloudinary URLs are remote assets, not local filenames.
+    if (/^https?:\/\//i.test(filename)) return;
+
     try {
-      const filePath = path.join(process.cwd(), 'uploads', filename);
+      const filePath = path.join(process.cwd(), 'uploads', path.basename(filename));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (err) {
       this.logger.warn(`Could not delete file: ${filename}`, err);

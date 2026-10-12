@@ -26,3 +26,17 @@ Thumbs.db
 *.db
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# Local backups and temporary build outputs
+*.backup
+build_admin_out.txt
+build_admin2_out.txt
+
+# Local SQLite migration backups (retain locally)
+backend/prisma/migrations_sqlite_backup/
+backend/prisma/migrations_sqlite_originals/
+
+# Generated JavaScript outputs in backend scripts
+backend/scripts/*.js
+backend/scripts/*.js.map
+backend/scripts/*.d.ts

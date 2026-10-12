@@ -11,6 +11,7 @@ import { UsersModule } from './users/users.module';
 import { ListingsModule } from './listings/listings.module';
 import { CategoriesModule } from './categories/categories.module';
 import { TradeOffersModule } from './trade-offers/trade-offers.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { TradeOffersModule } from './trade-offers/trade-offers.module';
     ListingsModule,
     CategoriesModule,
     TradeOffersModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

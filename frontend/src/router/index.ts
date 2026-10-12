@@ -2,6 +2,14 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import HomeView from '@/pages/HomeView.vue'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    guestOnly?: boolean
+    requiresAdmin?: boolean
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   scrollBehavior: () => ({ top: 0 }),
@@ -75,6 +83,38 @@ const router = createRouter({
       component: () => import('@/pages/PublicProfileView.vue'),
       // public — anyone can view
     },
+
+    // ── Admin routes ──────────────────────────────────────────────────────
+    {
+      path: '/admin',
+      name: 'admin-dashboard',
+      component: () => import('@/pages/admin/AdminDashboardView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('@/pages/admin/AdminUsersView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/users/:id',
+      name: 'admin-users-detail',
+      component: () => import('@/pages/admin/AdminUserDetailView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/listings',
+      name: 'admin-listings',
+      component: () => import('@/pages/admin/AdminListingsView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/listings/:id',
+      name: 'admin-listings-detail',
+      component: () => import('@/pages/admin/AdminListingDetailView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
   ],
 })
 
@@ -90,6 +130,11 @@ router.beforeEach((to) => {
   // Redirect unauthenticated users to login for protected pages
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // Redirect non-admin users away from admin routes
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { name: 'home' }
   }
 })
 

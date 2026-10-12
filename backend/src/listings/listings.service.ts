@@ -224,7 +224,7 @@ export class ListingsService {
     const existing = await this.prisma.listingImage.count({ where: { listingId } });
     const rows = files.map((file, i) => ({
       listingId,
-      imageUrl: file.filename,
+      imageUrl: file.path,
       videoUrl: null,
       sortOrder: existing + i,
     }));
@@ -240,8 +240,12 @@ export class ListingsService {
 
   private deleteFileIfExists(filename: string | null | undefined) {
     if (!filename) return;
+
+    // Cloudinary URLs are remote assets, not local filenames.
+    if (/^https?:\/\//i.test(filename)) return;
+
     try {
-      const filePath = path.join(process.cwd(), 'uploads', filename);
+      const filePath = path.join(process.cwd(), 'uploads', path.basename(filename));
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     } catch (err) {
       this.logger.warn(`Could not delete file: ${filename}`, err);

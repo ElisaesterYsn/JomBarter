@@ -118,10 +118,10 @@ describe('AuthService', () => {
       expect(result).not.toHaveProperty('password');
     });
 
-    it('does NOT include status or profileImage', async () => {
+    it('includes profileImage but does NOT include status', async () => {
       const result = await service.register(REGISTER_DTO);
+      expect(result).toHaveProperty('profileImage', null);
       expect(result).not.toHaveProperty('status');
-      expect(result).not.toHaveProperty('profileImage');
     });
 
     it('calls UsersService.create with a hash, not plaintext', async () => {

@@ -241,7 +241,7 @@ const listingService = {
   /** Resolve a stored filename to a full URL for display */
   mediaUrl(filename: string | null | undefined): string | null {
     if (!filename) return null
-    if (filename.startsWith('http')) return filename
+    if (/^https?:\/\//i.test(filename)) return filename
     const base = (import.meta.env.VITE_API_BASE_URL as string) || '/api'
     if (base.startsWith('/')) return `/uploads/${filename}`
     const serverRoot = base.replace(/\/api\/?$/, '')
